@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
+import jwt from "jsonwebtoken"
 
-export default function Home({ items, path }: any) {
+export default function Home({ items, path, rootUser }: any) {
   let [files, changeFiles] = useState(items)
   let [viewFile, selectViewFile] = useState("")
   let [message, setMessage] = useState("")
@@ -17,9 +18,10 @@ export default function Home({ items, path }: any) {
   }, [message])
   return (
     <Container>
-      <h1 style={{ textAlign: "center", marginTop: "100px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "/", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span onClick={() => window.location.href = `http://localhost:3000/${e.url}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
+      <h1 style={{ textAlign: "center", marginTop: "100px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "/", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `http://localhost:3000/${e.url}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
       <br></br>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
+        setLoadingState(true)
         for (const object of deleting) {
           try {
             let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${object.path}`, {
@@ -27,21 +29,22 @@ export default function Home({ items, path }: any) {
             })
             if (res.status != 204) {
               let data = await res.json()
+              setLoadingState(false)
               return setMessage(data.message)
             }
-            setLoadingState(true)
             let resp = await fetch("http://localhost:3000/api/bucket/dir"+path)
             let data = await resp.json()
             changeFiles(data)
-            setLoadingState(false)
           } catch (e) {
             setMessage("Looks like an error has occured, please check the console.")
+            setLoadingState(false)
             return console.error(e)
           }
         }
+        setLoadingState(false)
         setMessage(`Successfully deleted ${deleting.length} objects!`)
         setDeleting([])
-      }}>Delete</Button></h3> : <><InputGroup>
+      }}>Delete</Button></h3> : rootUser ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
       <InputGroup.Text id="lu">Upload FIles</InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="API Key..." id="files_to_upload" type="file" multiple></Form.Control>
       </InputGroup>
@@ -55,40 +58,42 @@ export default function Home({ items, path }: any) {
                     reader.onerror = reject;
                     reader.readAsArrayBuffer(blob);
                   });
+                  setLoadingState(true)
                   for (const file of files.files) {
                     let fileData = await read(file)
                     try {
                       let formdata = new FormData()
                       formdata.append("file", `[${new Uint8Array(fileData as any)}]`)
-                      let res = await fetch(`/api/bucket/file${path}${file.name}`, {
+                      let res = await fetch(`/api/bucket/file${path}${path == "/" ? "" : "/"}${file.name}`, {
                         method: "POST",
                         body: formdata
                       })
                       if (res.status != 204) {
                         let data = await res.json()
+                        setLoadingState(false)
                         return setMessage(data.message)
                       }
-                      setLoadingState(true)
                       let resp = await fetch("http://localhost:3000/api/bucket/dir"+path)
                       let data = await resp.json()
                       changeFiles(data)
-                      setLoadingState(false)
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
+                      setLoadingState(false)
                       console.error(e)
                     }
                   }
+                  setLoadingState(false)
                   setMessage(`Successfully added ${files.files.length} objects!`)
                   files.value = ""
                 }}>Submit</Button>
-      </>}
+      </div> : ""}
       <br></br>
       <h5 style={{textAlign: "center"}}>{message}</h5>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
         <Table className="table">
           <thead>
             <tr>
-              <th><input type="checkbox" onChange={(e) => {
+              <th><input disabled={!rootUser} checked={files.length == deleting.length} type="checkbox" onChange={(e) => {
                 let value = e.target.checked
                 if (value) {
                   setDeleting(files.map((e: any) => {
@@ -118,7 +123,7 @@ export default function Home({ items, path }: any) {
           </thead>
           <tbody style={{ opacity: loadingState ? "50%" : "100%" }}>
             {files.map((e: any) => <tr key={e.path}>
-              <td><input checked={!!deleting.find(x => x.path == e.path)} type="checkbox" onChange={(x) => {
+              <td><input disabled={!rootUser} checked={!!deleting.find(x => x.path == e.path)} type="checkbox" onChange={(x) => {
                 let value = x.target.checked
                 if (value) {
                   setDeleting([...deleting, { dir: e.isDir, path: e.path }])
@@ -140,6 +145,12 @@ export default function Home({ items, path }: any) {
 }
 
 export async function getServerSideProps({ req, res }: any) {
+  let ping = await fetch("http://localhost:3000/api/bucket/ping", {
+    headers: {
+      "Cookie": `token=${req.cookies.token}`
+    }
+  })
+  let {user} = await ping.json()
   let files = await fetch(`http://localhost:3000/api/bucket/dir${req.url}`, {
     headers: {
       "Cookie": `token=${req.cookies.token}`
@@ -154,7 +165,8 @@ export async function getServerSideProps({ req, res }: any) {
   return {
     props: {
       items: data,
-      path: req.url
+      path: req.url,
+      rootUser: user === "root"
     }
   }
 }

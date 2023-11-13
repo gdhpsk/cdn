@@ -5,15 +5,17 @@ import prettyBytes from "pretty-bytes";
 import dayjs from "dayjs";
 import jwt from "jsonwebtoken"
 import { authorized } from "../../../../mongodb";
+const multipart = require("parse-multipart-data")
 
 let { bucket } = process.env
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse,) {
-    if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
     let user = ""
     try {
         user = jwt.verify(req.cookies.token as string, process.env.jwtToken as string) as string
     } catch (_) { }
+    if(req.url == "/api/bucket/ping") return res.status(200).send({user})
+    if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
     if(req.method != "GET" && user !== "root") return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to perform the following command." })
     let valid = await authorized.exists({
         $expr: {
@@ -120,11 +122,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "POST":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to add!" })
-                    let resp = new Request("https://gdmobilewrlist.com/", { body: req.body as any, headers: req.headers as any,method: "POST" })
-                    let body = await resp.formData()
-                    console.log(body)
-                    let buffer = Buffer.from(JSON.parse(body.get("file") as string))
-                    await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"), buffer).catch((e) => {
+                    await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"),  Buffer.from(JSON.parse(req.body.substring(req.body.indexOf("["), req.body.indexOf("]")+1)))).catch((e) => {
                         console.log(e)
                         return res.status(400).send({ error: "400 BAD REQUEST", message: "This group does not exists!" })
                     })
