@@ -1,0 +1,35 @@
+{
+  "name": "cdn",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "dayjs": "^1.11.10",
+    "form-data-encoder": "^4.0.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.0",
+    "next": "^14.0.2",
+    "pretty-bytes": "^6.1.1",
+    "react": "^18",
+    "react-bootstrap": "^2.9.1",
+    "react-dom": "^18",
+    "sweetalert2": "^11.9.0",
+    "sweetalert2-react-content": "^5.0.7"
+  },
+  "devDependencies": {
+    "@types/formidable": "^3.4.5",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "eslint": "^8",
+    "eslint-config-next": "13.5.6",
+    "formidable": "^3.5.1",
+    "typescript": "^5"
+  }
+}
