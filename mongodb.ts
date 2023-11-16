@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import auth from "./schemas/authorized"
+import transactionsSchema from "./schemas/transactions";
 
 mongoose.connect(process.env.MONGODB_URI as string, {
     dbName: "cdn",
@@ -10,3 +11,4 @@ mongoose.connect(process.env.MONGODB_URI as string, {
 } as any);
 
 export const authorized = auth
+export const transactions = transactionsSchema
