@@ -146,7 +146,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "POST":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to add!" })
-                    if(req.body.length > 8000000) return res.json({error: "400 BAD REQUEST", message: "Max chunks allowed to be sent in are 8 MB!"})
+                    if(req.body.length > 16000000) return res.json({error: "400 BAD REQUEST", message: "Max chunks allowed to be sent in are 16 MB!"})
                     let tExists = await transactions.findOne({path: "/" + (req.query.path as string[]).join("/")})
                     if(tExists) {
                         try {
