@@ -69,9 +69,9 @@ export default function Home({ items, path, rootUser, data }: any) {
                     let fileData: any = await read(file)
                     try {
                       let key = ""
-                      setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 16000000)})
-                      for(let i = 0; i < fileData.length; i += 16000000) {
-                        let array = Array.from(fileData.slice(i, i+16000000))
+                      setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 8000000)})
+                      for(let i = 0; i < fileData.length; i += 8000000) {
+                        let array = Array.from(fileData.slice(i, i+8000000))
                         let res = await fetch(`/api/bucket/file${path}${path == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                           method: "POST",
                           headers: {
@@ -90,7 +90,7 @@ export default function Home({ items, path, rootUser, data }: any) {
                           let json = await res.json()
                           key = json.key
                         }
-                        setUploadProg({done: i / 16000000, remaining: Math.ceil(fileData.length / 16000000)})
+                        setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
                       }
                       let res = await fetch(`/api/bucket/file${path}${path == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                         method: "POST",
