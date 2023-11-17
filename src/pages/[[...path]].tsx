@@ -29,6 +29,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         setLoadingState(true)
         setFileCount({done: 0, remaining: deleting.length})
+        let count = 0;
         for (const object of deleting) {
           try {
             let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
@@ -45,13 +46,14 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
             let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
             let data2 = await resp2.json()
             changeMetaData(data2)
+            count++
+            setFileCount({done: count, remaining: deleting.length})
           } catch (e) {
             setMessage("Looks like an error has occured, please check the console.")
             setLoadingState(false)
             setFileCount({done: 0, remaining: 0})
             return console.error(e)
           }
-          setFileCount({done: fileCount.done+1, remaining: deleting.length})
         }
         setLoadingState(false)
         setFileCount({done: 0, remaining: 0})
@@ -72,6 +74,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                     reader.readAsArrayBuffer(blob);
                   });
                   setLoadingState(true)
+                  let count = 0;
                   setFileCount({done: 0, remaining: files.files.length})
                   for (const file of files.files) {
                     let fileData: any = await read(file)
@@ -122,7 +125,8 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         let data2 = await resp2.json()
                         changeMetaData(data2)
                         setUploadProg(null)
-                        setFileCount({done: fileCount.done+1, remaining: files.files.length})
+                        count++;
+                        setFileCount({done: count, remaining: files.files.length})
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
                       setLoadingState(false)
