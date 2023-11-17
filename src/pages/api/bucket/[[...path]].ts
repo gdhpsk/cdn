@@ -21,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
     } catch (_) { }
     if(req.url == "/api/bucket/ping") {
         const size = await getFolderSize.loose(bucket as string)
-        let total = 200 // in gigs
+        let total = 250 // in gigs
         return res.status(200).send({user, total, used: JSON.parse((size / 1000 / 1000 / 1000).toFixed(5))})
     }
     if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
