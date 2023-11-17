@@ -77,7 +77,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "GET":
                 try {
                     let files: any[] = await fs.readdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
-                    let editable = await authorized.exists({
+                    let editable = user == "root" || await authorized.exists({
                         $expr: {
                             $cond: {
                                 'if': {
