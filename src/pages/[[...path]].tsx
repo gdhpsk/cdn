@@ -7,6 +7,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
   let [metadata, changeMetaData] = useState(data)
   let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
+  let [fileCount, setFileCount] = useState({done: 0, remaining: 0})
   let [editing, changeEditing] = useState<any[]>([])
   let [message, setMessage] = useState("")
   let [deleting, setDeleting] = useState<any[]>([])
@@ -23,8 +24,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
       <h2 style={{ textAlign: "center", marginTop: "100px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
       <h1 style={{ textAlign: "center", marginTop: "20px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `https://storage.hpsk.me/${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
       <br></br>
+      <h3 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `${fileCount.done} / ${fileCount.remaining} remaining` : ""}</h3>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         setLoadingState(true)
+        setFileCount({done: 0, remaining: deleting.length})
         for (const object of deleting) {
           try {
             let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
@@ -44,10 +47,13 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
           } catch (e) {
             setMessage("Looks like an error has occured, please check the console.")
             setLoadingState(false)
+            setFileCount({done: 0, remaining: 0})
             return console.error(e)
           }
+          setFileCount({done: fileCount.done+1, remaining: deleting.length})
         }
         setLoadingState(false)
+        setFileCount({done: 0, remaining: 0})
         setMessage(`Successfully deleted ${deleting.length} objects!`)
         setDeleting([])
       }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
@@ -65,6 +71,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                     reader.readAsArrayBuffer(blob);
                   });
                   setLoadingState(true)
+                  setFileCount({done: 0, remaining: files.files.length})
                   for (const file of files.files) {
                     let fileData: any = await read(file)
                     try {
@@ -116,10 +123,13 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
                       setLoadingState(false)
+                      setFileCount({done: 0, remaining: 0})
                       console.error(e)
                     }
+                    setFileCount({done: fileCount.done+1, remaining: files.files.length})
                   }
                   setLoadingState(false)
+                  setFileCount({done: 0, remaining: 0})
                   setMessage(`Successfully added ${files.files.length} objects!`)
                   files.value = ""
                 }}>Submit</Button>
