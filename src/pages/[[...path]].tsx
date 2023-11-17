@@ -7,7 +7,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
   let [metadata, changeMetaData] = useState(data)
   let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
-  let [fileCount, setFileCount] = useState({done: 0, remaining: 0})
+  let [fileCount, setFileCount] = useState({done: 0, remaining: 0, on: ""})
   let [editing, changeEditing] = useState<any[]>([])
   let [message, setMessage] = useState("")
   let [deleting, setDeleting] = useState<any[]>([])
@@ -28,10 +28,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
       <h3 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `${fileCount.done} / ${fileCount.remaining} remaining` : ""}</h3>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         setLoadingState(true)
-        setFileCount({done: 0, remaining: deleting.length})
         let count = 0;
         for (const object of deleting) {
           try {
+            setFileCount({done: count, remaining: deleting.length, on: object.path})
             let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
               method: "DELETE"
             })
@@ -47,16 +47,15 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
             let data2 = await resp2.json()
             changeMetaData(data2)
             count++
-            setFileCount({done: count, remaining: deleting.length})
           } catch (e) {
             setMessage("Looks like an error has occured, please check the console.")
             setLoadingState(false)
-            setFileCount({done: 0, remaining: 0})
+            setFileCount({done: 0, remaining: 0, on: ""})
             return console.error(e)
           }
         }
         setLoadingState(false)
-        setFileCount({done: 0, remaining: 0})
+        setFileCount({done: 0, remaining: 0, on: ""})
         setMessage(`Successfully deleted ${deleting.length} objects!`)
         setDeleting([])
       }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
@@ -75,10 +74,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                   });
                   setLoadingState(true)
                   let count = 0;
-                  setFileCount({done: 0, remaining: files.files.length})
                   for (const file of files.files) {
-                    let fileData: any = await read(file)
                     try {
+                      setFileCount({done: count, remaining: files.files.length, on: `${path}${path == "/" ? "" : "/"}${file.name}`})
+                      let fileData: any = await read(file)
                       let key = ""
                       setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 8000000)})
                       for(let i = 0; i < fileData.length; i += 8000000) {
@@ -115,7 +114,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         let data = await res.json()
                         setLoadingState(false)
                         setUploadProg(null)
-                        setFileCount({done: 0, remaining: 0})
+                        setFileCount({done: 0, remaining: 0, on: ""})
                         return setMessage(data.message)
                       }
                         let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
@@ -126,16 +125,15 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         changeMetaData(data2)
                         setUploadProg(null)
                         count++;
-                        setFileCount({done: count, remaining: files.files.length})
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
                       setLoadingState(false)
-                      setFileCount({done: 0, remaining: 0})
+                      setFileCount({done: 0, remaining: 0, on: ""})
                       return console.error(e)
                     }
                   }
                   setLoadingState(false)
-                  setFileCount({done: 0, remaining: 0})
+                  setFileCount({done: 0, remaining: 0, on: ""})
                   setMessage(`Successfully added ${files.files.length} objects!`)
                   files.value = ""
                 }}>Submit</Button>
@@ -167,6 +165,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
       </div> : ""}
       <br></br>
       <h5 style={{textAlign: "center"}}>{uploadProg ? `${uploadProg.done} / ${uploadProg.remaining} chunks` : ""}</h5>
+      <h6 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `Currently on path: ${fileCount.on}` : ""}</h6>
       <h5 style={{textAlign: "center"}}>{message}</h5>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
         <Table className="table">
