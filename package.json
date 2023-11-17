@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
-    "bfs-buffer": "^0.1.7",
     "dayjs": "^1.11.10",
     "form-data-encoder": "^4.0.2",
     "get-folder-size": "^4.0.0",

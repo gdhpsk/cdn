@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
 import jwt from "jsonwebtoken"
 
-export default function Home({ items, path, rootUser, data }: any) {
+export default function Home({ items, path, rootUser, data, editable }: any) {
   let [metadata, changeMetaData] = useState(data)
   let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
@@ -37,7 +37,7 @@ export default function Home({ items, path, rootUser, data }: any) {
             }
             let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
             let data = await resp.json()
-            changeFiles(data)
+            changeFiles(data.files)
             let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
             let data2 = await resp2.json()
             changeMetaData(data2)
@@ -50,7 +50,7 @@ export default function Home({ items, path, rootUser, data }: any) {
         setLoadingState(false)
         setMessage(`Successfully deleted ${deleting.length} objects!`)
         setDeleting([])
-      }}>Delete</Button></h3> : rootUser ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
+      }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
       <InputGroup.Text id="lu">Upload FIles</InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="Files..." id="files_to_upload" type="file" multiple></Form.Control>
       </InputGroup>
@@ -108,7 +108,7 @@ export default function Home({ items, path, rootUser, data }: any) {
                       }
                         let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
                         let data = await resp.json()
-                        changeFiles(data)
+                        changeFiles(data.files)
                         let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
                         let data2 = await resp2.json()
                         changeMetaData(data2)
@@ -143,7 +143,7 @@ export default function Home({ items, path, rootUser, data }: any) {
                   }
                   let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
                   let data = await resp.json()
-                  changeFiles(data)
+                  changeFiles(data.files)
                   setLoadingState(false)
                   setMessage(`Successfully added the folder "${folder.value}"!`)
                   folder.value = ""
@@ -156,7 +156,7 @@ export default function Home({ items, path, rootUser, data }: any) {
         <Table className="table">
           <thead>
             <tr>
-              <th><input disabled={!rootUser} checked={files.length == deleting.length} type="checkbox" onChange={(e) => {
+              <th><input disabled={!editable} checked={files.length == deleting.length} type="checkbox" onChange={(e) => {
                 let value = e.target.checked
                 if (value) {
                   setDeleting(files.map((e: any) => {
@@ -178,7 +178,7 @@ export default function Home({ items, path, rootUser, data }: any) {
                 setLoadingState(true)
                 let res = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
                 let data = await res.json()
-                changeFiles(data)
+                changeFiles(data.files)
                 let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
                 let data2 = await resp2.json()
                 changeMetaData(data2)
@@ -190,7 +190,7 @@ export default function Home({ items, path, rootUser, data }: any) {
           </thead>
           <tbody style={{ opacity: loadingState ? "50%" : "100%" }}>
             {files.map((e: any) => <tr key={e.path}>
-              <td><input disabled={!rootUser} checked={!!deleting.find(x => x.path == e.path)} type="checkbox" onChange={(x) => {
+              <td><input disabled={!editable} checked={!!deleting.find(x => x.path == e.path)} type="checkbox" onChange={(x) => {
                 let value = x.target.checked
                 if (value) {
                   setDeleting([...deleting, { dir: e.isDir, path: e.path }])
@@ -226,7 +226,7 @@ export default function Home({ items, path, rootUser, data }: any) {
                   }
                   let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
                   let data = await resp.json()
-                  changeFiles(data)
+                  changeFiles(data.files)
                   setLoadingState(false)
                   setMessage(`Successfully edited object name to "${newName.value}"!`)
                   changeEditing(editing.filter(i => i.path !== e.path))
@@ -261,7 +261,8 @@ export async function getServerSideProps({ req, res }: any) {
   }
   return {
     props: {
-      items: data,
+      items: data.files,
+      editable: data.editable,
       path: req.url,
       data: metadata,
       rootUser: metadata.user === "root"

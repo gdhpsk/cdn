@@ -25,33 +25,69 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
         return res.status(200).send({user, total, used: JSON.parse((size / 1000 / 1000 / 1000).toFixed(5))})
     }
     if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
-    if(req.method != "GET" && user !== "root") return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to perform the following command." })
-    let valid = await authorized.exists({
-        $expr: {
-            $cond: {
-                'if': {
-                    $and: [{ $ne: ['$username', user] }, {
-                        $ne: [{
-                            $size: [{
-                                $filter: {
-                                    input: "$hasAccessTo",
-                                    as: "item",
-                                    cond: { $in: ["$$item", ["", ...(req.query.path as string[]).slice(1)].map((e, i, a) => a.slice(0, i+1).join("/") || "/")] }
-                                }
-                            }]
-                        }, 0]
-                    }]
-                }, then: true, 'else': false
+    if(user !== "root") {
+    if(req.method == "GET") {
+        let valid = await authorized.exists({
+            $expr: {
+                $cond: {
+                    'if': {
+                        $and: [{ $ne: ['$username', user] }, {
+                            $ne: [{
+                                $size: [{
+                                    $filter: {
+                                        input: "$hasAccessTo",
+                                        as: "item",
+                                        cond: { $in: ["$$item", ["", ...(req.query.path as string[]).slice(1)].map((e, i, a) => a.slice(0, i+1).join("/") || "/")] }
+                                    }
+                                }]
+                            }, 0]
+                        }]
+                    }, then: true, 'else': false
+                }
             }
-        }
-    })
-    if (valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to get the following route." })
+        })
+        if (valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to get the following route." })
+    } else {
+        let valid = await authorized.exists({
+            $expr: {
+                $cond: {
+                    'if': {
+                        $and: [{ $eq: ['$username', user] }, {
+                            $ne: [{
+                                $size: [{
+                                    $filter: {
+                                        input: "$writeAccessTo",
+                                        as: "item",
+                                        cond: { $in: ["$$item", ["", ...(req.query.path as string[]).slice(1)].map((e, i, a) => a.slice(0, i+1).join("/") || "/")] }
+                                    }
+                                }]
+                            }, 0]
+                        }]
+                    }, then: true, 'else': false
+                }
+            }
+        })
+        if (!valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to use the following route." })
+
+    }
+    }
     if ((req.query.path as string[])[0] == "dir") {
         (req.query.path as string[]).shift()
         switch (req.method) {
             case "GET":
                 try {
                     let files: any[] = await fs.readdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let editable = await authorized.exists({
+                        $expr: {
+                            $cond: {
+                                'if': {
+                                    $and: [{ $eq: ['$username', user] }, {
+                                        $in: ["/" + (req.query.path as string[]).join("/"), "$writeAccessTo"]
+                                    }]
+                                }, then: true, 'else': false
+                            }
+                        }
+                    })
                     files = files.map(async e => {
                         let stat = await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/") + "/" + e)
                         let isDir = stat.isDirectory()
@@ -66,6 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                 }
                             }
                         })
+                        
                         return {
                             name: !isDir ? e.split(".").slice(0, e.split(".").length-1).join(".") : e,
                             type: !isDir ? e.split(".").at(-1) : undefined,
@@ -80,7 +117,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     files = await Promise.all(files)
                     files = files.filter(e => e.authorized)
                     files.sort((a, b) => b.isDir - a.isDir)
-                    return res.status(200).send(files)
+                    return res.status(200).send({files, editable})
                 } catch (e) {
                     return res.status(404).send({ error: "404 NOT FOUND", message: "Could not find the group requested" })
                 }
