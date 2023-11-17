@@ -21,7 +21,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
   return (
     <Container>
       <h2 style={{ textAlign: "center", marginTop: "100px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
-      <h1 style={{ textAlign: "center", marginTop: "20px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "/", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `https://storage.hpsk.me/${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
+      <h1 style={{ textAlign: "center", marginTop: "20px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `https://storage.hpsk.me/${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
       <br></br>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         setLoadingState(true)
