@@ -111,6 +111,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         let data = await res.json()
                         setLoadingState(false)
                         setUploadProg(null)
+                        setFileCount({done: 0, remaining: 0})
                         return setMessage(data.message)
                       }
                         let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
@@ -120,13 +121,13 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         let data2 = await resp2.json()
                         changeMetaData(data2)
                         setUploadProg(null)
+                        setFileCount({done: fileCount.done+1, remaining: files.files.length})
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
                       setLoadingState(false)
                       setFileCount({done: 0, remaining: 0})
-                      console.error(e)
+                      return console.error(e)
                     }
-                    setFileCount({done: fileCount.done+1, remaining: files.files.length})
                   }
                   setLoadingState(false)
                   setFileCount({done: 0, remaining: 0})
