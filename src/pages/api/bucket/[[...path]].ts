@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             path: `${(req.query.path as string[]).length ? "/" : ""}` + (req.query.path as string[]).join("/") + "/" + e,
                             mime: !isDir ? (types as any)["." + e.split(".").at(-1)] || "application/octet-stream" : undefined,
                             size: prettyBytes(stat.size),
-                            modified: dayjs(stat.birthtimeMs).format("MMMM DD, YYYY hh:mm:ss A")
+                            modified: dayjs(stat.mtimeMs).format("MMMM DD, YYYY hh:mm:ss A")
                         }
                     })
                     files = await Promise.all(files)

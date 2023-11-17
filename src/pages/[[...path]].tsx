@@ -172,7 +172,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
               <th>Name</th>
               <th>MIME</th>
               <th>Size</th>
-              <th>Created</th>
+              <th>Modified</th>
               <th>Edit</th>
               <th><svg id="reload" onClick={async () => {
                 setLoadingState(true)
