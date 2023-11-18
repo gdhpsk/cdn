@@ -76,13 +76,17 @@ export default function Home({ data, metadata }: any) {
                         setSettings(arr)
                     }}></textarea><br></br></>)}
                 <div style={{display: "grid", placeItems: "center"}}><div style={{display: "flex"}}><Button style={{marginRight: "30px"}} onClick={() => {
-                        let setting = settings.find((i:any) => i._id == e._id)
-                        setting.writeAccessTo.push("")
-                        setSettings([...settings.splice(settings.findIndex((i:any) => i._id == e._id), 1, setting)])
+                       let setting = settings.find((i:any) => i._id == e._id)
+                       setting.writeAccessTo.push("")
+                       let arr = structuredClone(settings)
+                       arr.splice(settings.findIndex((i:any) => i._id == e._id), 1, setting)
+                       setSettings(arr)
                     }}>+</Button><Button style={{marginRight: "30px"}} onClick={() => {
-                        let setting = settings.find((i:any) => i._id == e._id)
-                        setting.writeAccessTo.pop()
-                        setSettings([...settings.splice(settings.findIndex((i:any) => i._id == e._id), 1, setting)])
+                      let setting = settings.find((i:any) => i._id == e._id)
+                      setting.writeAccessTo.pop()
+                      let arr = structuredClone(settings)
+                      arr.splice(settings.findIndex((i:any) => i._id == e._id), 1, setting)
+                      setSettings(arr)
                     }}>-</Button></div></div>
                 </td>
                 <td><Button style={{marginRight: "30px"}} onClick={() => {
