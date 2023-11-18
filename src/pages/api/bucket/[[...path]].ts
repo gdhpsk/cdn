@@ -111,7 +111,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     files = files.map(async e => {
                         let stat = await fs.lstat(bucket as string + specifiedPath + "/" + e)
                         let isDir = stat.isDirectory()
-                        let viewable = await authorized.exists({
+                        let viewable = user == "root" || await authorized.exists({
                             $expr: {
                                 $cond: {
                                     'if': {
