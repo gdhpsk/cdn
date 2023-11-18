@@ -2,8 +2,11 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
 import jwt from "jsonwebtoken"
+import Swal from 'sweetalert2'
+import withReactContent from 'sweetalert2-react-content'
 
 export default function Home({ items, path, filePath, data, editable, previousPaths }: any) {
+  let mySwal = withReactContent(Swal)
   let [metadata, changeMetaData] = useState(data)
   let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
@@ -36,9 +39,45 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               method: "DELETE"
             })
             if (res.status != 204) {
-              let data = await res.json()
-              setLoadingState(false)
-              return setMessage(data.message)
+              let json = await res.json()
+                    switch(json.type) {
+                      case "OverwriteErr":
+                        await new Promise((resolve, reject) => {
+                          mySwal.fire({
+                            background: "#white",
+                            color: "#333333",
+                            confirmButtonColor: '#08c',
+                            html: <>
+                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
+                                <div>
+                                  <Button style={{float: "left"}} onClick={async () => {
+                                    mySwal.clickConfirm()
+                                    let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}?overwrite=true`, {
+                                      method: "DELETE"
+                                    })
+                                    if (!res.ok) {
+                                      let data = await res.json()
+                                      setLoadingState(false)
+                                      setMessage(data.message)
+                                      reject()
+                                    }
+                                    resolve("")
+                                  }}>Yes</Button>
+                                  <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                    mySwal.clickConfirm()
+                                    setLoadingState(false)
+                                    setMessage(json.message)
+                                    reject()
+                                  }}>No</Button>
+                                </div>
+                            </>
+                        })
+                        })
+                        break;
+                      default:
+                        setLoadingState(false)
+                        return setMessage(json.message)
+                    }
             }
             let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
             let data = await resp.json()
@@ -92,9 +131,53 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         })
                         if (!res.ok) {
                           let data = await res.json()
-                          setLoadingState(false)
-                          setUploadProg(null)
-                          return setMessage(data.message)
+                          switch(data.type) {
+                            case "InvalidTokenErr":
+                              let overwrite = await new Promise((resolve, reject) => {
+                                mySwal.fire({
+                                  background: "#white",
+                                  titleText: "Enter API Key",
+                                  color: "#333333",
+                                  confirmButtonColor: '#08c',
+                                  html: <>
+                                      <h1 style={{textAlign: "center"}}>This file is currently being written by another user. Do you want to overwrite?</h1>
+                                      <div>
+                                        <Button style={{float: "left"}} onClick={async () => {
+                                          mySwal.clickConfirm()
+                                          let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}?overwrite=true`, {
+                                            method: "POST",
+                                            headers: {
+                                              "Content-Type": "application/json",
+                                              "X-secret-token": key
+                                            },
+                                            body: JSON.stringify(array)
+                                          })
+                                          let data = await res.json()
+                                          if (!res.ok) {
+                                            setLoadingState(false)
+                                            setUploadProg(null)
+                                            setMessage(data.message)
+                                            setUploadProg(null)
+                                            reject()
+                                          }
+                                          resolve(data)
+                                        }}>Yes</Button>
+                                        <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                          mySwal.clickConfirm()
+                                          reject()
+                                        }}>No</Button>
+                                      </div>
+                                  </>
+                              })
+                              })
+                              key = (overwrite as any).key as string
+                              setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
+                              continue;
+                            default:
+                              setLoadingState(false)
+                              setUploadProg(null)
+                              return setMessage(data.message)
+                          }
                         }
                         if(i == 0) {
                           let json = await res.json()
@@ -115,6 +198,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         setLoadingState(false)
                         setUploadProg(null)
                         setFileCount({done: 0, remaining: 0, on: ""})
+                        setUploadProg(null)
                         return setMessage(data.message)
                       }
                         let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
@@ -127,6 +211,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         count++;
                     } catch (e) {
                       setMessage("Looks like an error has occured, please check the console.")
+                      setUploadProg(null)
                       setLoadingState(false)
                       setFileCount({done: 0, remaining: 0, on: ""})
                       return console.error(e)
@@ -236,8 +321,50 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   })
                   if(res.status !== 204) {
                     let json = await res.json()
-                    setLoadingState(false)
-                    return setMessage(json.message)
+                    switch(json.type) {
+                      case "OverwriteErr":
+                        await new Promise((resolve, reject) => {
+                          mySwal.fire({
+                            background: "#white",
+                            color: "#333333",
+                            confirmButtonColor: '#08c',
+                            html: <>
+                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
+                                <div>
+                                  <Button style={{float: "left"}} onClick={async () => {
+                                    mySwal.clickConfirm()
+                                    let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwrite=true`, {
+                                      method: "PATCH",
+                                      headers: {
+                                        "Content-Type": "application/json"
+                                      },
+                                      body:JSON.stringify({
+                                        newName: `${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                                      })
+                                    })
+                                    if (!res.ok) {
+                                      let data = await res.json()
+                                      setLoadingState(false)
+                                      setMessage(data.message)
+                                      reject()
+                                    }
+                                    resolve("")
+                                  }}>Yes</Button>
+                                  <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                    mySwal.clickConfirm()
+                                    setLoadingState(false)
+                                    setMessage(json.message)
+                                    reject()
+                                  }}>No</Button>
+                                </div>
+                            </>
+                        })
+                        })
+                        break;
+                      default:
+                        setLoadingState(false)
+                        return setMessage(json.message)
+                    }
                   }
                   let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()

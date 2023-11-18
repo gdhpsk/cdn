@@ -158,6 +158,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "PATCH":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name to rename!" })
+                    if(req.query.overwrite) {
+                        await transactions.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
+                            $set: {
+                                path: {
+                                    $replaceOne: {
+                                        input: "$path",
+                                        find: "/" + (req.query.path as string[]).join("/"),
+                                        replacement: (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
+                                    }
+                                }
+                            }
+                        }])
+                    } else {
+                        let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: exists.map(e => e.path)})
+                    }
                     await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + "/" + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName)
                     await mappings.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                         $set: {
@@ -178,8 +194,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to delete!" })
+                    if(req.query.overwrite) {
+                        await transactions.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                    } else {
+                        let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are deleting currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: exists.map(e => e.path)})
+                    }
                     await fs.rm(bucket as string + "/" + (req.query.path as string[]).join("/"), { recursive: true, force: true })
-                    let str = (req.query.path as string[]).join("/").replaceAll("", "\\")
                     await mappings.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                     return res.status(204).send(null)
                 } catch (_) {
@@ -230,13 +251,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to add!" })
                     if(req.body.length > 8000000) return res.json({error: "400 BAD REQUEST", message: "Max chunks allowed to be sent in are 16 MB!"})
+                    if(!req.query.overwrite) {
                     let tExists = await transactions.findOne({path: "/" + (req.query.path as string[]).join("/")})
                     if(tExists) {
                         try {
                             let isAuthorized = await bcrypt.compare(req.headers["x-secret-token"] as any, tExists.cryptoKey as any)
                             if(!isAuthorized) throw new Error("")
                         } catch(_) {
-                            return res.status(401).send({ error: "401 UNAUTHORIZED", message: "Not a valid token for said path.", type: "invalidTokenErr" })
+                            return res.status(401).send({ error: "401 UNAUTHORIZED", message: "Not a valid token for said path.", type: "InvalidTokenErr" })
                         }
                         if(req.body == "END") {
                             await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
@@ -250,6 +272,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }
                         return res.status(201).send(null)
                     }
+                }
                     let buffer = Buffer.from(req.body);
                     await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"),  buffer).catch((e) => {
                         console.log(e)
@@ -262,9 +285,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                     url: "/" + url
                                 }
                             }, {upsert: true})
-                    let key = crypto.generateKeySync("hmac", {length: 32}).export().toString("hex")
+                    let key = crypto.generateKeySync("hmac", {length: 128}).export().toString("hex")
                     let cryptoKey = await bcrypt.hash(key, 10)
-                    await transactions.create({cryptoKey, path: "/" + (req.query.path as string[]).join("/")})
+                    await transactions.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
+                        $set: {
+                            cryptoKey
+                        }
+                    }, {upsert: true})
                     return res.status(201).send({key})
                 } catch (e) {
                     console.log(e)
@@ -273,6 +300,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to delete!" })
+                    if(req.query.overwrite) {
+                        await transactions.deleteMany({path: "/" + (req.query.path as string[]).join("/")})
+                    } else {
+                        let exists = await transactions.find({path: "/" + (req.query.path as string[]).join("/")})
+                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are deleting currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: exists.map(e => e.path)})
+                    }
                     await fs.rm(bucket as string + "/" + (req.query.path as string[]).join("/"))
                     await mappings.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
                     return res.status(204).send(null)
