@@ -149,8 +149,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "POST":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to create!" })
-                    let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
                     await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
                     await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
                         $set: {
                             path: "/" + (req.query.path as string[]).join("/"),
@@ -164,6 +164,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "PATCH":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name to rename!" })
+                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
                     if(req.query.overwrite) {
                         await transactions.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                             $set: {
@@ -200,6 +201,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to delete!" })
+                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
                     if(req.query.overwrite) {
                         await transactions.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                     } else {
@@ -304,6 +306,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to delete!" })
+                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
                     if(req.query.overwrite) {
                         await transactions.deleteMany({path: "/" + (req.query.path as string[]).join("/")})
                     } else {
