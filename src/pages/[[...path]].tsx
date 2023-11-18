@@ -273,7 +273,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               <th>MIME</th>
               <th>Size</th>
               <th>Modified</th>
-              <th>Edit</th>
+              {editable ? <th>Edit</th> : ""}
               <th><svg id="reload" onClick={async () => {
                 setLoadingState(true)
                 let res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
@@ -302,7 +302,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               <td>{e.mime || "-"}</td>
               <td>{e.isDir ? "-" : e.size}</td>
               <td>{e.modified}</td>
-              <td><Button onClick={async (x) => {
+              {editable ? <td><Button onClick={async (x) => {
                 if(x.currentTarget.innerText == "Edit") {
                   changeEditing([...editing, {path: e.path, value: e.name}])
                 } else {
@@ -373,7 +373,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   setMessage(`Successfully edited object name to "${newName.value}"!`)
                   changeEditing(editing.filter(i => i.path !== e.path))
                 }
-              }}>{editing.find(x => x.path == e.path) ? "Done" : "Edit"}</Button></td>
+              }}>{editing.find(x => x.path == e.path) ? "Done" : "Edit"}</Button></td> : ""}
               <td></td>
             </tr>)}
           </tbody>
