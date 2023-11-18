@@ -48,7 +48,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             color: "#333333",
                             confirmButtonColor: '#08c',
                             html: <>
-                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
+                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
@@ -329,7 +329,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             color: "#333333",
                             confirmButtonColor: '#08c',
                             html: <>
-                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
+                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
