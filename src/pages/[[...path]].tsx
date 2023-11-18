@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
 import jwt from "jsonwebtoken"
 
-export default function Home({ items, path, rootUser, data, editable }: any) {
+export default function Home({ items, path, filePath, data, editable, previousPaths }: any) {
   let [metadata, changeMetaData] = useState(data)
   let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
@@ -23,7 +23,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
     <Container>
       <h2 style={{ textAlign: "center", marginTop: "100px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>Extra money being used: ${metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00}</h5>
-      <h1 style={{ textAlign: "center", marginTop: "30px" }}>{path.split("/").slice(path == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: a.slice(0, i+1).join("/").slice(1) || "", name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `https://storage.hpsk.me/${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
+      <h1 style={{ textAlign: "center", marginTop: "30px" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}/${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
       <br></br>
       <h3 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `${fileCount.done} / ${fileCount.remaining} remaining` : ""}</h3>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
@@ -40,10 +40,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
               setLoadingState(false)
               return setMessage(data.message)
             }
-            let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
+            let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
             let data = await resp.json()
             changeFiles(data.files)
-            let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
+            let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
             let data2 = await resp2.json()
             changeMetaData(data2)
             count++
@@ -76,13 +76,13 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                   let count = 0;
                   for (const file of files.files) {
                     try {
-                      setFileCount({done: count, remaining: files.files.length, on: `${path}${path == "/" ? "" : "/"}${file.name}`})
+                      setFileCount({done: count, remaining: files.files.length, on: `${filePath}${filePath == "/" ? "" : "/"}${file.name}`})
                       let fileData: any = await read(file)
                       let key = ""
                       setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 8000000)})
                       for(let i = 0; i < fileData.length; i += 8000000) {
                         let array = Array.from(fileData.slice(i, i+8000000))
-                        let res = await fetch(`/api/bucket/file${path}${path == "/" ? "" : "/"}${encodeURI(file.name)}`, {
+                        let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                           method: "POST",
                           headers: {
                             "Content-Type": "application/json",
@@ -102,7 +102,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         }
                         setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
                       }
-                      let res = await fetch(`/api/bucket/file${path}${path == "/" ? "" : "/"}${encodeURI(file.name)}`, {
+                      let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                         method: "POST",
                         headers: {
                           "Content-Type": "text/plain",
@@ -117,10 +117,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                         setFileCount({done: 0, remaining: 0, on: ""})
                         return setMessage(data.message)
                       }
-                        let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
+                        let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                         let data = await resp.json()
                         changeFiles(data.files)
-                        let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
+                        let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
                         let data2 = await resp2.json()
                         changeMetaData(data2)
                         setUploadProg(null)
@@ -147,7 +147,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                   let folder: any = document.getElementById("folder_name")
                   if(!folder.value) return  setMessage("Please set a folder name to create!")
                   setLoadingState(true)
-                  let res = await fetch(`/api/bucket/dir${path}${path == "/" ? "" : "/"}${encodeURI(folder.value)}`, {
+                  let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(folder.value)}`, {
                     method: "POST"
                   })
                   if(res.status !== 204) {
@@ -155,7 +155,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                     setLoadingState(false)
                     return setMessage(json.message)
                   }
-                  let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
+                  let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()
                   changeFiles(data.files)
                   setLoadingState(false)
@@ -191,10 +191,10 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
               <th>Edit</th>
               <th><svg id="reload" onClick={async () => {
                 setLoadingState(true)
-                let res = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
+                let res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                 let data = await res.json()
                 changeFiles(data.files)
-                let resp2 = await fetch("https://storage.hpsk.me/api/bucket/ping")
+                let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
                 let data2 = await resp2.json()
                 changeMetaData(data2)
                 setLoadingState(false)
@@ -213,7 +213,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                   setDeleting(deleting.filter(i => i.path !== e.path))
                 }
               }}></input></td>
-              <td>{editing.find(x => x.path == e.path)  ? <textarea defaultValue={e.name} placeholder='name...' onChange={(x) => changeEditing([...editing.filter(i => i.path !== e.path), {path: e.path, value: x.target.value}])}></textarea> : <a href={`https://storage.hpsk.me${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.path)}`}><img height={32} width={32} src={e.type ? `https://github.com/redbooth/free-file-icons/blob/master/32px/${e.mime == "application/octet-stream" ? "_blank" : e.type}.png?raw=true` : "https://img.icons8.com/ios-filled/50/folder-invoices--v2.png"} />{e.type ? "" : " "}{e.name}</a>}</td>
+              <td>{editing.find(x => x.path == e.path)  ? <textarea defaultValue={e.name} placeholder='name...' onChange={(x) => changeEditing([...editing.filter(i => i.path !== e.path), {path: e.path, value: x.target.value}])}></textarea> : <a href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}><img height={32} width={32} src={e.type ? `https://github.com/redbooth/free-file-icons/blob/master/32px/${e.mime == "application/octet-stream" ? "_blank" : e.type}.png?raw=true` : "https://img.icons8.com/ios-filled/50/folder-invoices--v2.png"} />{e.type ? "" : " "}{e.name}</a>}</td>
               <td>{e.mime || "-"}</td>
               <td>{e.isDir ? "-" : e.size}</td>
               <td>{e.modified}</td>
@@ -225,7 +225,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                   if(!newName.value) return  setMessage("Please set a valid name to change the object to!!")
                   let {name} = files.find((i:any) => i.path == e.path)
                   setLoadingState(true)
-                  let res = await fetch(`/api/bucket/dir${path}${path == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}`, {
+                  let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}`, {
                     method: "PATCH",
                     headers: {
                       'content-type': "application/json"
@@ -239,7 +239,7 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
                     setLoadingState(false)
                     return setMessage(json.message)
                   }
-                  let resp = await fetch("https://storage.hpsk.me/api/bucket/dir"+encodeURI(path))
+                  let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()
                   changeFiles(data.files)
                   setLoadingState(false)
@@ -257,13 +257,13 @@ export default function Home({ items, path, rootUser, data, editable }: any) {
 }
 
 export async function getServerSideProps({ req, res }: any) {
-  let ping = await fetch("https://storage.hpsk.me/api/bucket/ping", {
+  let ping = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`, {
     headers: {
       "Cookie": `token=${req.cookies.token}`
     }
   })
   let metadata = await ping.json()
-  let files = await fetch(`https://storage.hpsk.me/api/bucket/dir${encodeURI(req.url)}`, {
+  let files = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir${encodeURI(req.url)}`, {
     headers: {
       "Cookie": `token=${req.cookies.token}`
     }
@@ -273,13 +273,18 @@ export async function getServerSideProps({ req, res }: any) {
     if(files.status !== 200) throw new Error()
     data = await files.json()
   } catch(e) {
+    return {
+      notFound: true
+    }
   }
   return {
     props: {
       items: data.files,
       editable: data.editable,
       path: req.url,
+      filePath: data.path,
       data: metadata,
+      previousPaths: data.previousPaths,
       rootUser: metadata.user === "root"
     }
   }

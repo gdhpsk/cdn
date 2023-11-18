@@ -23,7 +23,7 @@ export default function Home({ data, metadata }: any) {
                     }}>+</Button></th>
                 <th><Button style={{marginRight: "30px"}} onClick={async () => {
                         setLoadingState(true)
-                        let edit = await fetch("https://storage.hpsk.me/api/settings", {
+                        let edit = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/settings`, {
                             method: "PATCH",
                             headers: {
                               "content-type": "application/json"
@@ -97,7 +97,7 @@ export default function Home({ data, metadata }: any) {
       <h3>{token}</h3>
       <Button onClick={async () => {
         let token = (document.getElementById("token-name") as any).value
-        let lol = await fetch("https://storage.hpsk.me/api/token?name="+token)
+        let lol = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/token?name=`+token)
         let data = await lol.json()
         setToken(data.token)
       }}>Submit</Button>
@@ -106,7 +106,7 @@ export default function Home({ data, metadata }: any) {
 }
 
 export async function getServerSideProps({ req, res }: any) {
-  let ping = await fetch("https://storage.hpsk.me/api/bucket/ping", {
+  let ping = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`, {
     headers: {
       "Cookie": `token=${req.cookies.token}`
     }
@@ -117,7 +117,7 @@ export async function getServerSideProps({ req, res }: any) {
         notFound: true
     }
   }
-  let settings = await fetch(`https://storage.hpsk.me/api/settings`, {
+  let settings = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/settings`, {
     headers: {
       "Cookie": `token=${req.cookies.token}`
     }
