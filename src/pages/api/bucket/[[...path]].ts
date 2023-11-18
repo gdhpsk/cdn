@@ -233,19 +233,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     let tExists = await transactions.findOne({path: "/" + (req.query.path as string[]).join("/")})
                     if(tExists) {
                         try {
-                            await bcrypt.compare(req.headers["x-secret-token"] as any, tExists.cryptoKey as any)
+                            let isAuthorized = await bcrypt.compare(req.headers["x-secret-token"] as any, tExists.cryptoKey as any)
+                            if(!isAuthorized) throw new Error("")
                         } catch(_) {
-                            return res.status(400).send({ error: "401 UNAUTHORIZED", message: "Not a valid token for said path." })
+                            return res.status(401).send({ error: "401 UNAUTHORIZED", message: "Not a valid token for said path.", type: "invalidTokenErr" })
                         }
                         if(req.body == "END") {
                             await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
-                            let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
-                            await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
-                                $set: {
-                                    path: "/" + (req.query.path as string[]).join("/"),
-                                    url: "/" + url
-                                }
-                            }, {upsert: true})
                             return res.status(204).send(null)
                         }
                         try {
@@ -261,13 +255,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         console.log(e)
                         return res.status(400).send({ error: "400 BAD REQUEST", message: "This group does not exists!" })
                     })
+                    let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
+                            await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
+                                $set: {
+                                    path: "/" + (req.query.path as string[]).join("/"),
+                                    url: "/" + url
+                                }
+                            }, {upsert: true})
                     let key = crypto.generateKeySync("hmac", {length: 32}).export().toString("hex")
                     let cryptoKey = await bcrypt.hash(key, 10)
                     await transactions.create({cryptoKey, path: "/" + (req.query.path as string[]).join("/")})
                     return res.status(201).send({key})
                 } catch (e) {
                     console.log(e)
-                    return res.status(400).send({ error: "400 BAD REQUEST", message: "Make sure your body is form data!" })
+                    return res.status(400).send({ error: "400 BAD REQUEST", message: "Make sure your body is an array of numbered ascii chars!" })
                 }
             case "DELETE":
                 try {
