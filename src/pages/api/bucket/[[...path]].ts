@@ -97,7 +97,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 try {
                     if ((req.query.path as string[]).length > 1) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object ID to view!" })
                     let files: any[] = await fs.readdir(bucket as string + specifiedPath)
-                    let editable = user == "root" || await authorized.exists({
+                    let editable = user !== "root" || await authorized.exists({
                         $expr: {
                             $cond: {
                                 'if': {
