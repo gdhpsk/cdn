@@ -66,6 +66,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 $cond: {
                     'if': {
                         $and: [{ $eq: ['$username', user] }, {
+                            $not: [
+                                {
+                                    $in: ["/" + (req.query.path as string[]).slice(1).join("/"), "$writeAccessTo"]
+                                }
+                            ]
+                        }, {
                             $ne: [{
                                 $size: [{
                                     $filter: {
@@ -96,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             $cond: {
                                 'if': {
                                     $and: [{ $eq: ['$username', user] }, {
-                                        $in: ["/" + (req.query.path as string[]).join("/"), "$writeAccessTo"]
+                                        $in: [specifiedPath, "$writeAccessTo"]
                                     }]
                                 }, then: true, 'else': false
                             }
