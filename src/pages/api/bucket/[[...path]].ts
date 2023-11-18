@@ -171,7 +171,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                     $replaceOne: {
                                         input: "$path",
                                         find: "/" + (req.query.path as string[]).join("/"),
-                                        replacement: (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
+                                        replacement: "/" + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
                                     }
                                 }
                             }
@@ -187,7 +187,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                 $replaceOne: {
                                     input: "$path",
                                     find: "/" + (req.query.path as string[]).join("/"),
-                                    replacement: (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
+                                    replacement: "/" + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
                                 }
                             }
                         }
