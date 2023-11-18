@@ -31,12 +31,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
         return res.status(200).send({user, total, used: JSON.parse((size / 1000 / 1000 / 1000).toFixed(5))})
     }
     if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
-    if(user !== "root") {
     if(req.method == "GET") {
         let path = req.query.path[1] ? await mappings.findOne({url: "/" + (req.query.path[1] || "")}) : {
             path: ""
         }
         if(!path) return res.status(400).send({ error: "400 BAD REQUEST", message: "Could not find the corresponding object." })
+        specifiedPath = path.path
+    }
+    if(user !== "root") {
+    if(req.method == "GET") {
         let valid = await authorized.exists({
             $expr: {
                 $cond: {
@@ -47,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                     $filter: {
                                         input: "$hasAccessTo",
                                         as: "item",
-                                        cond: { $in: ["$$item", ["", ...path.path.split("/")].slice(1).map((e: any, i: any, a: any) => a.slice(0, i+1).join("/") || "/")] }
+                                        cond: { $in: ["$$item", ["", ...specifiedPath.split("/")].slice(1).map((e: any, i: any, a: any) => a.slice(0, i+1).join("/") || "/")] }
                                     }
                                 }]
                             }, 0]
@@ -57,7 +60,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             }
         })
         if (valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to get the following route." })
-        specifiedPath = path.path
     } else {
         let valid = await authorized.exists({
             $expr: {
@@ -215,6 +217,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 try {
                     if ((req.query.path as string[]).length != 1) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object ID to view!" })
                     let stat = await fs.lstat(bucket as string + specifiedPath)
+                    
                     if(stat.isDirectory()) throw new Error()
                     if (!req.query.download) {
                         res.setHeader("content-disposition", `inline;"`);
@@ -237,6 +240,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     })
                     return res.end()
                 } catch (_) {
+                    console.log(_)
                     return res.status(404).send({ error: "404 NOT FOUND", message: "Could not find the object requested" })
                 }
             case "POST":
