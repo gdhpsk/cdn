@@ -38,29 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
         if(!path) return res.status(400).send({ error: "400 BAD REQUEST", message: "Could not find the corresponding object." })
         specifiedPath = path.path
     }
-    if(user !== "root") {
-    if(req.method == "GET") {
-        let valid = await authorized.exists({
-            $expr: {
-                $cond: {
-                    'if': {
-                        $and: [{ $ne: ['$username', user] }, {
-                            $ne: [{
-                                $size: [{
-                                    $filter: {
-                                        input: "$hasAccessTo",
-                                        as: "item",
-                                        cond: { $in: ["$$item", ["", ...specifiedPath.split("/")].slice(1).map((e: any, i: any, a: any) => a.slice(0, i+1).join("/") || "/")] }
-                                    }
-                                }]
-                            }, 0]
-                        }]
-                    }, then: true, 'else': false
-                }
-            }
-        })
-        if (valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to get the following route." })
-    } else {
+    if(user !== "root" && req.method !== "GET")  {
         let valid = await authorized.exists({
             $expr: {
                 $cond: {
@@ -88,7 +66,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
         })
         if (!valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to use the following route." })
 
-    }
     }
     if ((req.query.path as string[])[0] == "dir") {
         (req.query.path as string[]).shift()
