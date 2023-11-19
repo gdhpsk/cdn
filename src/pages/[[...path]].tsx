@@ -202,6 +202,47 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                               localStorage.setItem("key", (overwrite as any).key as string)
                               setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
                               continue;
+                              case "OverwriteErr":
+                                let ow = await new Promise((resolve, reject) => {
+                                  mySwal.fire({
+                                    background: "#white",
+                                    titleText: "Enter API Key",
+                                    color: "#333333",
+                                    confirmButtonColor: '#08c',
+                                    html: <>
+                                        <h3 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{file.name} already exists. Do you want to overwrite?</h3>
+                                        <div>
+                                          <Button style={{float: "left"}} onClick={async () => {
+                                            mySwal.clickConfirm()
+                                            let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}?overwrite=true`, {
+                                              method: "POST",
+                                              headers: {
+                                                "Content-Type": "application/json",
+                                                "X-secret-token": key
+                                              },
+                                              body: JSON.stringify(array)
+                                            })
+                                            let data = await res.json()
+                                            if (!res.ok) {
+                                              setLoadingState(false)
+                                              setUploadProg(null)
+                                              setMessage(data.message)
+                                              setUploadProg(null)
+                                              reject("DoNothing")
+                                            }
+                                            resolve(data)
+                                          }}>Yes</Button>
+                                          <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                            mySwal.clickConfirm()
+                                            reject("OverwriteRejected")
+                                          }}>No</Button>
+                                        </div>
+                                    </>
+                                })
+                                })
+                                localStorage.setItem("key", (ow as any).key as string)
+                                setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
+                                continue;
                             default:
                               setLoadingState(false)
                               setUploadProg(null)
@@ -277,8 +318,55 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   })
                   if(res.status !== 204) {
                     let json = await res.json()
-                    setLoadingState(false)
-                    return setMessage(json.message)
+                    switch(json.type) {
+                      case "OverwriteErr":
+                        try {
+                        await new Promise((resolve, reject) => {
+                          mySwal.fire({
+                            background: "#white",
+                            titleText: "Enter API Key",
+                            color: "#333333",
+                            confirmButtonColor: '#08c',
+                            html: <>
+                                <h3 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{folder.value} already exists. Do you want to overwrite?</h3>
+                                <div>
+                                  <Button style={{float: "left"}} onClick={async () => {
+                                    mySwal.clickConfirm()
+                                    let resp = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(folder.value)}?overwrite=true`, {
+                                      method: "POST"
+                                    })
+                                    if (!resp.ok) {
+                                      let data = await resp.json()
+                                      setLoadingState(false)
+                                      setUploadProg(null)
+                                      setMessage(data.message)
+                                      setUploadProg(null)
+                                      reject()
+                                    }
+                                    resolve("")
+                                  }}>Yes</Button>
+                                  <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                    mySwal.clickConfirm()
+                                    reject("OverwriteRejected")
+                                  }}>No</Button>
+                                </div>
+                            </>
+                        })
+                        })
+                      } catch(e) {
+                        switch(e) {
+                          case "OverwriteRejected":
+                            setLoadingState(false)
+                            return setMessage("Folder overwrite has been rejected.")
+                          default:
+                            return
+                        }
+                      }
+                      break;
+                      default:  
+                        setLoadingState(false)
+                        return setMessage(json.message)
+                    }
                   }
                   let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()
@@ -333,7 +421,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
             </tr>
           </thead>
           <tbody style={{ opacity: loadingState ? "50%" : "100%" }}>
-            {files.map((e: any) => <tr key={e.path}>
+            {files.map((e: any) => <><tr key={e.path}>
               <td><input disabled={!editable} checked={!!deleting.find(x => x.path == e.path)} type="checkbox" onChange={(x) => {
                 let value = x.target.checked
                 if (value) {
@@ -342,15 +430,16 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   setDeleting(deleting.filter(i => i.path !== e.path))
                 }
               }}></input></td>
-              <td>{editing.find(x => x.path == e.path)  ? <textarea defaultValue={e.name} placeholder='name...' onChange={(x) => changeEditing([...editing.filter(i => i.path !== e.path), {path: e.path, value: x.target.value}])}></textarea> : <a href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}><img height={32} width={32} src={e.type ? `https://github.com/redbooth/free-file-icons/blob/master/32px/${e.mime == "application/octet-stream" ? "_blank" : e.type}.png?raw=true` : "https://img.icons8.com/ios-filled/50/folder-invoices--v2.png"} />{e.type ? "" : " "}{e.name}</a>}</td>
+              <td><a href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}><img height={32} width={32} src={e.type ? `https://github.com/redbooth/free-file-icons/blob/master/32px/${e.mime == "application/octet-stream" ? "_blank" : e.type}.png?raw=true` : "https://img.icons8.com/ios-filled/50/folder-invoices--v2.png"} />{e.type ? "" : " "}{e.name}</a></td>
               <td>{e.mime || "-"}</td>
               <td>{e.isDir ? "-" : e.size}</td>
               <td>{e.modified}</td>
               {editable ? <td><Button onClick={async (x) => {
                 if(x.currentTarget.innerText == "Edit") {
-                  changeEditing([...editing, {path: e.path, value: e.name}])
+                  changeEditing([...editing, {path: e.path, value: e.name, newPath: e.path.split("/").slice(0, -1).join("/") || "/"}])
                 } else {
                   let newName = editing.find(i => i.path == e.path)
+                  if(newName.path == newName.newPath + (newName.newPath == "/" ? "" : "/") +  newName.value + `${e.isDir ? "" : `.${e.type}`}`) return changeEditing(editing.filter(i => i.path !== e.path));
                   if(!newName.value) return  setMessage("Please set a valid name to change the object to!!")
                   let {name} = files.find((i:any) => i.path == e.path)
                   setLoadingState(true)
@@ -360,13 +449,13 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                       'content-type': "application/json"
                     },
                     body: JSON.stringify({
-                      newName: `${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                      newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
                     })
                   })
                   if(res.status !== 204) {
                     let json = await res.json()
                     switch(json.type) {
-                      case "OverwriteErr":
+                      case "TransactionOverwriteErr":
                         await new Promise((resolve, reject) => {
                           mySwal.fire({
                             background: "#white",
@@ -383,7 +472,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                         "Content-Type": "application/json"
                                       },
                                       body:JSON.stringify({
-                                        newName: `${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                                        newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
                                       })
                                     })
                                     if (!res.ok) {
@@ -405,7 +494,46 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         })
                         })
                         break;
-                      default:
+                        case "GroupOverwriteErr":
+                          await new Promise((resolve, reject) => {
+                            mySwal.fire({
+                              background: "#white",
+                              color: "#333333",
+                              confirmButtonColor: '#08c',
+                              html: <>
+                                  <h3 style={{textAlign: "center"}}>Path {newName.newPath}{newName.newPath == "/" ? "" : "/"}{newName.value}{e.isDir ? "" : `.${e.type}`} already exists. Do you want to overwrite?</h3>
+                                  <div>
+                                    <Button style={{float: "left"}} onClick={async () => {
+                                      mySwal.clickConfirm()
+                                      let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwriteGroup=true`, {
+                                        method: "PATCH",
+                                        headers: {
+                                          "Content-Type": "application/json"
+                                        },
+                                        body:JSON.stringify({
+                                          newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                                        })
+                                      })
+                                      if (!res.ok) {
+                                        let data = await res.json()
+                                        setLoadingState(false)
+                                        setMessage(data.message)
+                                        reject()
+                                      }
+                                      resolve("")
+                                    }}>Yes</Button>
+                                    <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                      mySwal.clickConfirm()
+                                      setLoadingState(false)
+                                      setMessage(json.message)
+                                      reject()
+                                    }}>No</Button>
+                                  </div>
+                              </>
+                          })
+                          })
+                          break;
+                        default:
                         setLoadingState(false)
                         return setMessage(json.message)
                     }
@@ -414,13 +542,31 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   let data = await resp.json()
                   changeFiles(data.files)
                   setLoadingState(false)
-                  setMessage(`Successfully edited object name to "${newName.value}"!`)
+                  setMessage(`Successfully edited object dir to "${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}"!`)
                   changeEditing(editing.filter(i => i.path !== e.path))
                 }
               }}>{editing.find(x => x.path == e.path) ? "Done" : "Edit"}</Button></td> : ""}
               <td>{e.isDir ? "-" : <svg onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}/api/bucket/file${encodeURI(e.url)}?download=true`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20px"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V274.7l-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7V32zM64 352c-35.3 0-64 28.7-64 64v32c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V416c0-35.3-28.7-64-64-64H346.5l-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352H64zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>}</td>
               <td></td>
-            </tr>)}
+            </tr>
+            <tr style={{height: "100px", display: `${editing.find(x => x.path == e.path) ? "" : "none"}`}}>
+              <td style={{borderBottomWidth: 0}}></td>
+              <td style={{borderBottomWidth: 0}}>
+                <h6>Name:</h6>
+                  <textarea key={e.name} defaultValue={e.name} placeholder='name...' onChange={(x) => {
+                    let edit = editing.find(i => i.path === e.path)
+                    changeEditing([...editing.filter(i => i.path !== e.path), {...edit, value: x.target.value}])
+                  }}></textarea>
+              </td>
+              <td style={{borderBottomWidth: 0}}>
+                <h6>Directory:</h6>
+                  <textarea key={e.path} defaultValue={e.path.split("/").slice(0, -1).join("/") || "/"} placeholder='directory...' onChange={(x) => {
+                    let edit = editing.find(i => i.path === e.path)
+                    changeEditing([...editing.filter(i => i.path !== e.path), {...edit, newPath: x.target.value}])
+                  }}></textarea>
+              </td>
+            </tr>
+            </>)}
           </tbody>
         </Table>
       </div>

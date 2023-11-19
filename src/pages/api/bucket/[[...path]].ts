@@ -145,7 +145,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "POST":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to create!" })
-                    await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let existing = await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
+                    if(existing?.directory == true) return res.status(400).send({ error: "400 BAD REQUEST", message: "That group already exists!", type: "OverwriteErr"})
+                    if(existing?.directory == false) return res.status(400).send({ error: "400 BAD REQUEST", message: `That group is of type "${existing.directory ? "Folder" : "File"}" meaning it cannot be overwritten!`})
+                    if(req.query.overwrite) {
+                        await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"), {recursive: true})
+                    } else {
+                        await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    }
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
                     while(true) {
                         let exists = await mappings.exists({url: "/" + url})
@@ -155,17 +162,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
                         $set: {
                             path: "/" + (req.query.path as string[]).join("/"),
-                            url: "/" + url
+                            url: "/" + url,
+                            directory: true
                         }
                     }, {upsert: true})
                     return res.status(204).send(null)
                 } catch (_) {
-                    return res.status(400).send({ error: "400 BAD REQUEST", message: "That group already exists!" })
+                    return res.status(400).send({ error: "400 BAD REQUEST", message: "That group name has a corresponding file name!", type: "OverwriteErr"})
                 }
             case "PATCH":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name to rename!" })
-                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let existing = await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
+                    if(!existing) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to edit." })
+                    let valid = user == "root" ? true : await authorized.exists({
+                        $expr: {
+                            $cond: {
+                                'if': {
+                                    $and: [{ $eq: ['$username', user] }, {
+                                        $not: [
+                                            {
+                                                $in: [req.body.newDir, "$writeAccessTo"]
+                                            }
+                                        ]
+                                    }, {
+                                        $ne: [{
+                                            $size: [{
+                                                $filter: {
+                                                    input: "$writeAccessTo",
+                                                    as: "item",
+                                                    cond: { $in: ["$$item", ["", ...(req.body.newDir as string).split("/").slice(1)].map((e, i, a) => a.slice(0, i+1).join("/") || "/")] }
+                                                }
+                                            }]
+                                        }, 0]
+                                    }]
+                                }, then: true, 'else': false
+                            }
+                        }
+                    })
+                    if (!valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to move the object to the following path." })
+                    let exists = await mappings.findOne({path: req.body.newDir})
+                        if(exists !== null && exists?.directory == existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: "That new object directory already exists. Pass the overwriteGroup param to try and overwrite it.", type: "GroupOverwriteErr"})
+                        if(exists !== null  && exists?.directory !== existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwrite) {
                         await transactions.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                             $set: {
@@ -173,36 +211,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                                     $replaceOne: {
                                         input: "$path",
                                         find: "/" + (req.query.path as string[]).join("/"),
-                                        replacement: ((req.query.path as string[]).length == 1 ? "" : "/") + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
+                                        replacement: req.body.newDir
                                     }
                                 }
                             }
                         }])
                     } else {
                         let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
-                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: exists.map(e => e.path)})
+                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "TransactionOverwriteErr", affectedFiles: exists.map(e => e.path)})
                     }
-                    await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + "/" + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName)
+                    if(req.query.overwriteGroup) {await mappings.deleteOne({path: req.body.newDir})};
+                    await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + req.body.newDir)
                     await mappings.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                         $set: {
                             path: {
                                 $replaceOne: {
                                     input: "$path",
                                     find: "/" + (req.query.path as string[]).join("/"),
-                                    replacement: ((req.query.path as string[]).length == 1 ? "" : "/") + (req.query.path as string[]).slice(0, (req.query.path as string[]).length-1).join("/") + "/" + req.body.newName
+                                    replacement: req.body.newDir
                                 }
                             }
                         }
                     }])
                     return res.status(204).send(null)
                 } catch (_) {
-                    console.log(_)
                     return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to edit." })
                 }
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to delete!" })
-                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let existing = await mappings.exists({path: "/" + (req.query.path as string[]).join("/"), directory: true})
+                    if(!existing) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
                     if(req.query.overwrite) {
                         await transactions.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                     } else {
@@ -289,6 +328,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         return res.status(201).send(null)
                     }
                 }
+                let alreadyCreated =  await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
+                if(alreadyCreated?.directory == false)  return res.status(401).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
+                if(alreadyCreated?.directory == true)  return res.status(401).send({ error: "400 BAD REQUEST", message: "Folder with the same name already exists"})
                     let buffer = Buffer.from(req.body);
                     await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"),  buffer).catch((e) => {
                         console.log(e)
@@ -303,7 +345,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
                                 $set: {
                                     path: "/" + (req.query.path as string[]).join("/"),
-                                    url: "/" + url
+                                    url: "/" + url,
+                                    directory: false
                                 }
                             }, {upsert: true})
                     let key = crypto.generateKeySync("hmac", {length: 128}).export().toString("hex")
@@ -321,7 +364,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
             case "DELETE":
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a file name to delete!" })
-                    await fs.lstat(bucket as string + "/" + (req.query.path as string[]).join("/"))
+                    let existing = await mappings.exists({path: "/" + (req.query.path as string[]).join("/"), directory: false})
+                    if(!existing) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
                     if(req.query.overwrite) {
                         await transactions.deleteMany({path: "/" + (req.query.path as string[]).join("/")})
                     } else {
