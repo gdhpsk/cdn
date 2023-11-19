@@ -147,6 +147,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to create!" })
                     await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"))
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
+                    while(true) {
+                        let exists = await mappings.exists({url: "/" + url})
+                        if(!exists) break;
+                        url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
+                    }
                     await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
                         $set: {
                             path: "/" + (req.query.path as string[]).join("/"),
@@ -290,6 +295,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         return res.status(400).send({ error: "400 BAD REQUEST", message: "This group does not exists!" })
                     })
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
+                    while(true) {
+                        let exists = await mappings.exists({url: "/" + url})
+                        if(!exists) break;
+                        url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
+                    }
                             await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
                                 $set: {
                                     path: "/" + (req.query.path as string[]).join("/"),
