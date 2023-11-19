@@ -272,7 +272,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     })
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
                             await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
-                                $setOnInsert: {
+                                $set: {
                                     path: "/" + (req.query.path as string[]).join("/"),
                                     url: "/" + url
                                 }
