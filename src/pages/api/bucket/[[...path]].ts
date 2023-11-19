@@ -103,7 +103,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             name: !isDir ? e.split(".").slice(0, e.split(".").length-1).join(".") : e,
                             type: !isDir ? e.split(".").at(-1) : undefined,
                             isDir,
-                            authorized: !!!viewable,
+                            authorized: !viewable,
                             url: (await mappings.findOne({path: specifiedPath + "/" + e})).url,
                             path: specifiedPath + "/" + e,
                             mime: !isDir ? (types as any)["." + e.split(".").at(-1)] || "application/octet-stream" : undefined,
@@ -114,11 +114,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     files = await Promise.all(files)
                     files = files.filter(e => e.authorized)
                     files.sort((a, b) => b.isDir - a.isDir)
-                    let previousPaths = await Promise.all(specifiedPath.split("/").slice(1).map(async (e, i, a) => {
+                    let valid = user == "root" ? false : await authorized.exists({
+                        $expr: {
+                            $cond: {
+                                'if': {
+                                    $and: [{ $ne: ['$username', user] }, {
+                                        $ne: [{
+                                            $size: [{
+                                                $filter: {
+                                                    input: "$hasAccessTo",
+                                                    as: "item",
+                                                    cond: { $in: ["$$item", ["", ...specifiedPath.split("/")].slice(1).map((e: any, i: any, a: any) => a.slice(0, i+1).join("/") || "/")] }
+                                                }
+                                            }]
+                                        }, 0]
+                                    }]
+                                }, then: true, 'else': false
+                            }
+                        }
+                    })
+                    let previousPaths = !valid ? await Promise.all(specifiedPath.split("/").slice(1).map(async (e, i, a) => {
                         let path = a.slice(0, i+1).join("/") || ""
                         return (await mappings.findOne({path: "/" + path})).url
-                    }))
-                    return res.status(200).send({files, editable, path: specifiedPath || "/", previousPaths: ["/", ...previousPaths]})
+                    })) : req.query.path[0] ? ["/" + req.query.path[0]] : [] 
+                    return res.status(200).send({files, editable, path: !valid ? (specifiedPath || "/") : "/" + specifiedPath.split("/").at(-1), previousPaths: ["/", ...previousPaths], hasVisibleAccess: !valid})
                 } catch (e) {
                     console.log(e)
                     return res.status(404).send({ error: "404 NOT FOUND", message: "Could not find the group requested" })
