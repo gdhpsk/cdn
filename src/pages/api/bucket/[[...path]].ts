@@ -270,6 +270,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
                             return res.status(204).send(null)
                         }
+                        if(req.body == "CANCEL") {
+                            await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
+                            await mappings.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
+                            await fs.rm(bucket as string + "/" + (req.query.path as string[]).join("/")).catch((e) => {
+                                console.log(e)
+                                return res.status(400).send({ error: "400 BAD REQUEST", message: "This group does not exists!" })
+                            })
+                            return res.status(204).send(null)
+                        }
                         try {
                             let buffer = Buffer.from(req.body);
                             await fs.appendFile(bucket as string + "/" + (req.query.path as string[]).join("/"), buffer)
@@ -286,7 +295,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     })
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
                             await mappings.updateOne({path: "/" + (req.query.path as string[]).join("/")}, {
-                                $set: {
+                                $setOnInsert: {
                                     path: "/" + (req.query.path as string[]).join("/"),
                                     url: "/" + url
                                 }

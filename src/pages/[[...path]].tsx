@@ -113,13 +113,14 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   });
                   setLoadingState(true)
                   let count = 0;
+                  localStorage.removeItem("key")
                   for (const file of files.files) {
                     try {
                       setFileCount({done: count, remaining: files.files.length, on: `${filePath}${filePath == "/" ? "" : "/"}${file.name}`})
                       let fileData: any = await read(file)
-                      let key = ""
                       setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 8000000)})
                       for(let i = 0; i < fileData.length; i += 8000000) {
+                        let key = localStorage.getItem("key") || ""
                         let array = Array.from(fileData.slice(i, i+8000000))
                         let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                           method: "POST",
@@ -129,6 +130,33 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                           },
                           body: JSON.stringify(array)
                         })
+                        if((localStorage.getItem("cmd") || "") == "STOPIT") {
+                          localStorage.removeItem("cmd")
+                          let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "text/plain",
+                              "X-secret-token": localStorage.getItem("key") || ""
+                            },
+                            body: "CANCEL"
+                          })
+                          if (!res.ok) {
+                            let data = await res.json()
+                            return setMessage(data.message)
+                          }
+                            localStorage.removeItem("key")
+                            let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
+                            let data = await resp.json()
+                            changeFiles(data.files)
+                            let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
+                            let data2 = await resp2.json()
+                            changeMetaData(data2)
+                            setLoadingState(false)
+                            setUploadProg(null)
+                            setFileCount({done: 0, remaining: 0, on: ""})
+                            setUploadProg(null)
+                            return setMessage("Successfully cancelled all future uploads!")
+                        }
                         if (!res.ok) {
                           let data = await res.json()
                           switch(data.type) {
@@ -158,19 +186,19 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                             setUploadProg(null)
                                             setMessage(data.message)
                                             setUploadProg(null)
-                                            reject()
+                                            reject("DoNothing")
                                           }
                                           resolve(data)
                                         }}>Yes</Button>
                                         <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
                                           mySwal.clickConfirm()
-                                          reject()
+                                          reject("OverwriteRejected")
                                         }}>No</Button>
                                       </div>
                                   </>
                               })
                               })
-                              key = (overwrite as any).key as string
+                              localStorage.setItem("key", (overwrite as any).key as string)
                               setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
                               continue;
                             default:
@@ -181,7 +209,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         }
                         if(i == 0) {
                           let json = await res.json()
-                          key = json.key
+                          localStorage.setItem("key", json.key)
                         }
                         setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
                       }
@@ -189,7 +217,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         method: "POST",
                         headers: {
                           "Content-Type": "text/plain",
-                          "X-secret-token": key
+                          "X-secret-token": localStorage.getItem("key") || ""
                         },
                         body: "END"
                       })
@@ -208,13 +236,24 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         let data2 = await resp2.json()
                         changeMetaData(data2)
                         setUploadProg(null)
+                        localStorage.removeItem("key")
                         count++;
                     } catch (e) {
+                      switch(e) {
+                        case "DoNothing":
+                          break;
+                        case "OverwriteRejected":
+                          setUploadProg(null)
+                          setLoadingState(false)
+                          setFileCount({done: 0, remaining: 0, on: ""})
+                          return setMessage("File overwrite has been rejected.")
+                        default:
                       setMessage("Looks like an error has occured, please check the console.")
                       setUploadProg(null)
                       setLoadingState(false)
                       setFileCount({done: 0, remaining: 0, on: ""})
-                      return console.error(e)
+                      return console.error(e)   
+                      }
                     }
                   }
                   setLoadingState(false)
@@ -252,6 +291,9 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       <h5 style={{textAlign: "center"}}>{uploadProg ? `${uploadProg.done} / ${uploadProg.remaining} chunks` : ""}</h5>
       <h6 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `Currently on path: ${fileCount.on}` : ""}</h6>
       <h5 style={{textAlign: "center"}}>{message}</h5>
+      <div style={{display: "grid", placeItems: "center"}}>{uploadProg ? <Button onClick={async (e) => {
+        localStorage.setItem("cmd", "STOPIT")
+      }}>Cancel</Button> : ""}</div>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
         <Table className="table">
           <thead>
