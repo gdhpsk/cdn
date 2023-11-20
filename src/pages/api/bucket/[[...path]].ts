@@ -268,12 +268,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     
                     if(stat.isDirectory()) throw new Error()
                     if (!req.query.download) {
-                        res.setHeader("content-disposition", `inline; filename="${req.query.name || specifiedPath.split("/").at(-1)}"`);
+                        res.setHeader("content-disposition", `inline; filename="${req.query.name ? req.query.name + "." + specifiedPath.split("/").at(-1)?.split(".").at(-1) : specifiedPath.split("/").at(-1)}"`);
                         res.setHeader("accept-ranges", "bytes");
                         let str = "." + specifiedPath.split("/").at(-1)?.split(".").at(-1)?.toLowerCase() || "a"
                         res.setHeader("Content-Type", (types as any)[str]);
                     } else {
-                        res.setHeader("content-disposition", `attachment; filename="${req.query.name || specifiedPath.split("/").at(-1)}"`);
+                        res.setHeader("content-disposition", `attachment; filename="${req.query.name ? req.query.name + "." + specifiedPath.split("/").at(-1)?.split(".").at(-1) : specifiedPath.split("/").at(-1)}"`);
                     }
                     res.writeHead(200, {
                         'content-length': stat.size
