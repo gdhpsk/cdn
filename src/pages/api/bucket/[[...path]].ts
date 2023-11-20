@@ -10,6 +10,7 @@ import { createReadStream, createWriteStream } from "fs";
 import crypto from "crypto"
 import bcrypt from "bcrypt"
 import { Readable } from "stream";
+import cors from "../../../../cors.json"
 
 let { bucket } = process.env
 
@@ -20,6 +21,7 @@ function escapeRegExp(string: string) {
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse,) {
+    res.setHeader("Access-Control-Allow-Origin", cors["Acess-Control-Allow-Origin"].find(e => e == req.headers.origin) || "*")
     let user = ""
     let specifiedPath = ""
     try {
@@ -85,26 +87,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             }
                         }
                     })
-                    files = files.map(async e => {
-                        let stat = await fs.lstat(bucket as string + specifiedPath + "/" + e)
-                        let isDir = stat.isDirectory()
-                        let viewable = user == "root" ? false : await authorized.exists({
-                            $expr: {
+                    let aggregate = await mappings.aggregate([{
+                        $match: {
+                            path: {$in: files.map(e => specifiedPath + "/" + e)}
+                        }
+                    },
+                    {
+                         $lookup: {
+                            from: "authorizeds",
+                            let: {path: "$path"},
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $cond: {
+                                                'if': {
+                                                    $and: [{ $ne: ['$username', user] }, {
+                                                        $in: ["$$path", "$hasAccessTo"]
+                                                    }]
+                                                }, then: true, 'else': false
+                                            }
+                                        }
+                                    }
+                                }
+                            ],
+                            as: "viewable"
+                         }             
+                    },
+                    {
+                        $project: {
+                            url: 1,
+                            path: 1,
+                            viewable: {
                                 $cond: {
                                     'if': {
-                                        $and: [{ $ne: ['$username', user] }, {
-                                            $in: ["/" + e, "$hasAccessTo"]
-                                        }]
-                                    }, then: true, 'else': false
-                                }
-                            }
-                        })
+                                       $and: [
+                                        {$ne: [user, "root"]},
+                                        { $ne: [{$size: "$viewable"}, 0]}
+                                       ]
+                                    }, 
+                                    then: false, 
+                                    else: true
+                            },
+                        }
+                    }
+                }
+                ])
+                    files = files.map(async e => {
+                        let stat = await fs.lstat(bucket as string + specifiedPath + "/" + e)
+                        let extras = aggregate.find(x => x.path == specifiedPath + "/" + e)
+                        let isDir = stat.isDirectory()
+                        let {viewable, url} =extras
                         return {
                             name: !isDir ? e.split(".").slice(0, e.split(".").length-1).join(".") : e,
                             type: !isDir ? e.split(".").at(-1) : undefined,
                             isDir,
-                            authorized: !viewable,
-                            url: (await mappings.findOne({path: specifiedPath + "/" + e})).url,
+                            authorized: viewable,
+                            url,
                             path: specifiedPath + "/" + e,
                             mime: !isDir ? (types as any)["." + e.split(".").at(-1).toLowerCase()] || "application/octet-stream" : undefined,
                             size: prettyBytes(stat.size),
