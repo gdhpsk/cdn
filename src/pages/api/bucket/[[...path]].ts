@@ -20,6 +20,7 @@ function escapeRegExp(string: string) {
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse,) {
+    res.setHeader("Access-Control-Allow-Origin", "*")
     let user = ""
     let specifiedPath = ""
     try {
