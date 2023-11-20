@@ -166,7 +166,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             directory: true
                         }
                     }, {upsert: true})
-                    return res.status(204).send(null)
+                    return res.status(201).send({hash: url})
                 } catch (_) {
                     return res.status(400).send({ error: "400 BAD REQUEST", message: "That group name has a corresponding file name!", type: "OverwriteErr"})
                 }
@@ -308,7 +308,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }
                         if(req.body == "END") {
                             await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
-                            return res.status(204).send(null)
+                            let hash =  await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
+                            return res.status(201).send({hash: hash.url.split("/")[1]})
                         }
                         if(req.body == "CANCEL") {
                             await transactions.deleteOne({path: "/" + (req.query.path as string[]).join("/")})
