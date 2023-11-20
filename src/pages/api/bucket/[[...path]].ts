@@ -10,7 +10,6 @@ import { createReadStream, createWriteStream } from "fs";
 import crypto from "crypto"
 import bcrypt from "bcrypt"
 import { Readable } from "stream";
-import cors from "../../../../cors.json"
 
 let { bucket } = process.env
 
@@ -21,7 +20,6 @@ function escapeRegExp(string: string) {
 
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse,) {
-    res.setHeader("Access-Control-Allow-Origin", cors["Acess-Control-Allow-Origin"].find(e => e == req.headers.origin) || "*")
     let user = ""
     let specifiedPath = ""
     try {
