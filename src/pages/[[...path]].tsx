@@ -1,20 +1,44 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
-import jwt from "jsonwebtoken"
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
 
 export default function Home({ items, path, filePath, data, editable, previousPaths }: any) {
   let mySwal = withReactContent(Swal)
   let [metadata, changeMetaData] = useState(data)
-  let [uploadProg, setUploadProg] = useState<any>(null)
   let [files, changeFiles] = useState(items)
-  let [fileCount, setFileCount] = useState({done: 0, remaining: 0, on: ""})
   let [editing, changeEditing] = useState<any[]>([])
   let [message, setMessage] = useState("")
   let [deleting, setDeleting] = useState<any[]>([])
   let [loadingState, setLoadingState] = useState(false)
+  let [editsDone, setEditsDone] = useState(true)
+  let [edits, changeEdits] = useState<Array<{
+    path: string,
+    total: number,
+    remaining: number,
+    message: string,
+    timeout: any,
+    cancelable?: boolean
+    errored?: boolean
+  }>>([])
+
+  useEffect(() => {
+   (async () => {
+    if(edits.length && editsDone)  setEditsDone(false)
+    if(!edits.length && !editsDone) {
+      setMessage("Tasks completed successfully.")
+      let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
+      let data = await resp.json()
+      changeFiles(data.files)
+      let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
+      let data2 = await resp2.json()
+      changeMetaData(data2)
+      setEditsDone(true)
+    }
+   })()
+  })
+
   useEffect(() => {
     if (message) {
       setTimeout(() => {
@@ -29,81 +53,106 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>Extra money being used: ${metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00}</h5>
       <h1 style={{ textAlign: "center", marginTop: "30px" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
       <br></br>
-      <h3 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `${fileCount.done} / ${fileCount.remaining} remaining` : ""}</h3>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
+        let listOfEdits: any[] = []
         setLoadingState(true)
-        let count = 0;
         for (const object of deleting) {
-          try {
-            setFileCount({done: count, remaining: deleting.length, on: object.path})
-            let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
-              method: "DELETE"
-            })
-            if (res.status != 204) {
-              let json = await res.json()
-                    switch(json.type) {
-                      case "OverwriteErr":
-                        await new Promise((resolve, reject) => {
-                          mySwal.fire({
-                            background: "#white",
-                            color: "#333333",
-                            confirmButtonColor: '#08c',
-                            html: <>
-                                <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
-                                <div>
-                                  <Button style={{float: "left"}} onClick={async () => {
-                                    mySwal.clickConfirm()
-                                    let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}?overwrite=true`, {
-                                      method: "DELETE"
-                                    })
-                                    if (!res.ok) {
-                                      let data = await res.json()
-                                      setLoadingState(false)
-                                      setMessage(data.message)
-                                      reject()
-                                    }
-                                    resolve("")
-                                  }}>Yes</Button>
-                                  <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
-                                    mySwal.clickConfirm()
-                                    setLoadingState(false)
-                                    setMessage(json.message)
-                                    reject()
-                                  }}>No</Button>
-                                </div>
-                            </>
-                        })
-                        })
-                        break;
-                      default:
-                        setLoadingState(false)
-                        return setMessage(json.message)
-                    }
-            }
-            let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
-            let data = await resp.json()
-            changeFiles(data.files)
-            let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
-            let data2 = await resp2.json()
-            changeMetaData(data2)
-            count++
-          } catch (e) {
-            setMessage("Looks like an error has occured, please check the console.")
-            setLoadingState(false)
-            setFileCount({done: 0, remaining: 0, on: ""})
-            return console.error(e)
+          const obj: any = {
+            path: "",
+            remaining: 0,
+            total: 0,
+            message: "",
+            timeout: "",
+            cancelable: false
           }
+          const replaceObj = async (o: Record<any, any>) => {
+              listOfEdits.splice(listOfEdits.findIndex(x => x.path == o.path), 1, o)
+              changeEdits([...listOfEdits])
+          }
+          setTimeout(async function item() {
+            try {
+              obj.path = object.path
+              obj.timeout = item
+              listOfEdits.push(obj)
+              changeEdits([...listOfEdits])
+              let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
+                method: "DELETE"
+              })
+              if (res.status != 204) {
+                let json = await res.json()
+                      switch(json.type) {
+                        case "OverwriteErr":
+                          await new Promise((resolve, reject) => {
+                            mySwal.fire({
+                              background: "#white",
+                              color: "#333333",
+                              confirmButtonColor: '#08c',
+                              html: <>
+                                  <h4 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h4>
+                                  <br></br>
+                                  <div>
+                                    <Button style={{float: "left"}} onClick={async () => {
+                                      mySwal.clickConfirm()
+                                      let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}?overwrite=true`, {
+                                        method: "DELETE"
+                                      })
+                                      if (!res.ok) {
+                                        let data = await res.json()
+                                        setLoadingState(false)
+                                        obj.message = data.message
+                                        replaceObj(obj)
+                                        reject("DoNothing")
+                                      }
+                                      resolve("")
+                                    }}>Yes</Button>
+                                    <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                      mySwal.clickConfirm()
+                                      setLoadingState(false)
+                                      obj.message = json.message
+                                      replaceObj(obj)
+                                      reject("OverwriteRejected")
+                                    }}>No</Button>
+                                  </div>
+                              </>
+                          })
+                          })
+                          break;
+                        default:
+                          setLoadingState(false)
+                          obj.message = json.message
+                          obj.errored = true
+                          replaceObj(obj)
+                      }
+              }
+              listOfEdits.splice(listOfEdits.findIndex(x => x.path == object.path), 1)
+              changeEdits([...listOfEdits])
+              return "SUCCESS"
+            } catch (e) {
+              obj.errored = true
+              switch(e) {
+                case "DoNothing":
+                  return replaceObj(obj)
+                case "OverwriteRejected":
+                  obj.message = "File overwrite has been rejected."
+                  return replaceObj(obj)
+                default:
+                  obj.message = "Looks like an error has occured, please check the console."
+              replaceObj(obj)
+              setLoadingState(false)
+              return console.error(e)
+              }
+            }
+          }, 0)
         }
         setLoadingState(false)
-        setFileCount({done: 0, remaining: 0, on: ""})
-        setMessage(`Successfully deleted ${deleting.length} objects!`)
         setDeleting([])
       }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
       <InputGroup.Text id="lu">Upload FIles</InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="Files..." id="files_to_upload" type="file" multiple></Form.Control>
       </InputGroup>
       <br></br>
-                <Button type="button" onClick={async () => {
+                <Button type="button" onClick={() => {
+                  let listOfEdits: any[] = []
                   let files: any = document.getElementById("files_to_upload")
                   if(!files.files.length) return  setMessage("Please set some files to upload!")
                   const read = (blob: Blob) => new Promise((resolve, reject) => {
@@ -113,104 +162,72 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                     reader.readAsArrayBuffer(blob);
                   });
                   setLoadingState(true)
-                  let count = 0;
-                  localStorage.removeItem("key")
                   for (const file of files.files) {
-                    try {
-                      setFileCount({done: count, remaining: files.files.length, on: `${filePath}${filePath == "/" ? "" : "/"}${file.name}`})
-                      let fileData: any = await read(file)
-                      setUploadProg({done: 0, remaining: Math.ceil(fileData.length / 8000000)})
-                      for(let i = 0; i < fileData.length; i += 8000000) {
-                        let key = localStorage.getItem("key") || ""
-                        let array = Array.from(fileData.slice(i, i+8000000))
-                        let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
-                          method: "POST",
-                          headers: {
-                            "Content-Type": "application/json",
-                            "X-secret-token": key
-                          },
-                          body: JSON.stringify(array)
-                        })
-                        if((localStorage.getItem("cmd") || "") == "STOPIT") {
-                          localStorage.removeItem("cmd")
+                    const obj: any = {
+                      path: `${filePath}${filePath == "/" ? "" : "/"}${file.name}`,
+                      remaining: 0,
+                      total: 0,
+                      message: "",
+                      timeout: ""
+                    }
+                    const replaceObj = async (o: Record<any, any>) => {
+                        listOfEdits.splice(listOfEdits.findIndex(x => x.path == o.path), 1, o)
+                        changeEdits([...listOfEdits])
+                    }
+                    setTimeout(async function time() {
+                      try {
+                        Object.assign(time, {key: ""})
+                        let fileData: any = await read(file)
+                        obj.total = Math.ceil(fileData.length / 8000000)
+                        obj.timeout = time
+                        listOfEdits.push(obj)
+                        changeEdits(listOfEdits)
+                        for(let i = 0; i < fileData.length; i += 8000000) {
+                          let {key, cmd} = time as any
+                          let array = Array.from(fileData.slice(i, i+8000000))
                           let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                             method: "POST",
                             headers: {
-                              "Content-Type": "text/plain",
-                              "X-secret-token": localStorage.getItem("key") || ""
+                              "Content-Type": "application/json",
+                              "X-secret-token": key
                             },
-                            body: "CANCEL"
+                            body: JSON.stringify(array)
                           })
+                          if(cmd == "STOPIT") {
+                            let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
+                              method: "POST",
+                              headers: {
+                                "Content-Type": "text/plain",
+                                "X-secret-token": key
+                              },
+                              body: "CANCEL"
+                            })
+                            if (!res.ok) {
+                              let data = await res.json()
+                              obj.message = data.message
+                              obj.errored = true
+                              return replaceObj(obj)
+                            }
+                              obj.message = "Successfully cancelled upload!"
+                              setTimeout(() => {
+                                listOfEdits.splice(listOfEdits.findIndex(x => x.path == obj.path), 1)
+                                changeEdits(listOfEdits)
+                            }, 3000)
+                              return replaceObj(obj)
+                          }
                           if (!res.ok) {
                             let data = await res.json()
-                            return setMessage(data.message)
-                          }
-                            localStorage.removeItem("key")
-                            let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
-                            let data = await resp.json()
-                            changeFiles(data.files)
-                            let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
-                            let data2 = await resp2.json()
-                            changeMetaData(data2)
-                            setLoadingState(false)
-                            setUploadProg(null)
-                            setFileCount({done: 0, remaining: 0, on: ""})
-                            setUploadProg(null)
-                            return setMessage("Successfully cancelled all future uploads!")
-                        }
-                        if (!res.ok) {
-                          let data = await res.json()
-                          switch(data.type) {
-                            case "InvalidTokenErr":
-                              let overwrite = await new Promise((resolve, reject) => {
-                                mySwal.fire({
-                                  background: "#white",
-                                  titleText: "Enter API Key",
-                                  color: "#333333",
-                                  confirmButtonColor: '#08c',
-                                  html: <>
-                                      <h1 style={{textAlign: "center"}}>This file is currently being written by another user. Do you want to overwrite?</h1>
-                                      <div>
-                                        <Button style={{float: "left"}} onClick={async () => {
-                                          mySwal.clickConfirm()
-                                          let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}?overwrite=true`, {
-                                            method: "POST",
-                                            headers: {
-                                              "Content-Type": "application/json",
-                                              "X-secret-token": key
-                                            },
-                                            body: JSON.stringify(array)
-                                          })
-                                          let data = await res.json()
-                                          if (!res.ok) {
-                                            setLoadingState(false)
-                                            setUploadProg(null)
-                                            setMessage(data.message)
-                                            setUploadProg(null)
-                                            reject("DoNothing")
-                                          }
-                                          resolve(data)
-                                        }}>Yes</Button>
-                                        <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
-                                          mySwal.clickConfirm()
-                                          reject("OverwriteRejected")
-                                        }}>No</Button>
-                                      </div>
-                                  </>
-                              })
-                              })
-                              localStorage.setItem("key", (overwrite as any).key as string)
-                              setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
-                              continue;
-                              case "OverwriteErr":
-                                let ow = await new Promise((resolve, reject) => {
+                            switch(data.type) {
+                              case "InvalidTokenErr":
+                                let overwrite = await new Promise((resolve, reject) => {
                                   mySwal.fire({
                                     background: "#white",
                                     titleText: "Enter API Key",
                                     color: "#333333",
                                     confirmButtonColor: '#08c',
                                     html: <>
-                                        <h3 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{file.name} already exists. Do you want to overwrite?</h3>
+                                        <h4 style={{textAlign: "center"}}>File at {filePath}{filePath == "/" ? "" : "/"}{file.name} is currently being written by another user. Do you want to overwrite?</h4>
+                                        <br></br>
                                         <div>
                                           <Button style={{float: "left"}} onClick={async () => {
                                             mySwal.clickConfirm()
@@ -225,9 +242,8 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                             let data = await res.json()
                                             if (!res.ok) {
                                               setLoadingState(false)
-                                              setUploadProg(null)
-                                              setMessage(data.message)
-                                              setUploadProg(null)
+                                              obj.message = data.message
+                                              await replaceObj(obj)
                                               reject("DoNothing")
                                             }
                                             resolve(data)
@@ -240,67 +256,110 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                     </>
                                 })
                                 })
-                                localStorage.setItem("key", (ow as any).key as string)
-                                setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
+                                Object.assign(time, {key: (overwrite as any).key as string})
+                                obj.remaining++
+                                obj.total = Math.ceil(fileData.length / 8000000)
+                                await replaceObj(obj)
                                 continue;
-                            default:
-                              setLoadingState(false)
-                              setUploadProg(null)
-                              return setMessage(data.message)
+                                case "OverwriteErr":
+                                  let ow = await new Promise((resolve, reject) => {
+                                    mySwal.fire({
+                                      background: "#white",
+                                      titleText: "Enter API Key",
+                                      color: "#333333",
+                                      confirmButtonColor: '#08c',
+                                      html: <>
+                                          <h4 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{file.name} already exists. Do you want to overwrite?</h4>
+                                          <br></br>
+                                          <div>
+                                            <Button style={{float: "left"}} onClick={async () => {
+                                              mySwal.clickConfirm()
+                                              let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}?overwrite=true`, {
+                                                method: "POST",
+                                                headers: {
+                                                  "Content-Type": "application/json",
+                                                  "X-secret-token": key
+                                                },
+                                                body: JSON.stringify(array)
+                                              })
+                                              let data = await res.json()
+                                              if (!res.ok) {
+                                                setLoadingState(false)
+                                                obj.message = data.message
+                                                await replaceObj(obj)
+                                                reject("DoNothing")
+                                              }
+                                              resolve(data)
+                                            }}>Yes</Button>
+                                            <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
+                                              mySwal.clickConfirm()
+                                              reject("OverwriteRejected")
+                                            }}>No</Button>
+                                          </div>
+                                      </>
+                                  })
+                                  }) 
+                                  Object.assign(time, {key: (ow as any).key as string})
+                                  obj.remaining++
+                                  obj.total = Math.ceil(fileData.length / 8000000)
+                                  await replaceObj(obj)
+                                  continue;
+                              default:
+                                setLoadingState(false)
+                                obj.message = data.message
+                                obj.errored = true
+                                return await replaceObj(obj)
+                            }
                           }
+                          if(i == 0) {
+                            let json = await res.json()
+                            Object.assign(time, {key: json.key})
+                          }
+                          obj.remaining++
+                          obj.total = Math.ceil(fileData.length / 8000000)
+                          await replaceObj(obj)
                         }
-                        if(i == 0) {
-                          let json = await res.json()
-                          localStorage.setItem("key", json.key)
-                        }
-                        setUploadProg({done: i / 8000000, remaining: Math.ceil(fileData.length / 8000000)})
-                      }
-                      let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
-                        method: "POST",
-                        headers: {
-                          "Content-Type": "text/plain",
-                          "X-secret-token": localStorage.getItem("key") || ""
-                        },
-                        body: "END"
-                      })
-                      if (!res.ok) {
-                        let data = await res.json()
-                        setLoadingState(false)
-                        setUploadProg(null)
-                        setFileCount({done: 0, remaining: 0, on: ""})
-                        setUploadProg(null)
-                        return setMessage(data.message)
-                      }
-                        let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
-                        let data = await resp.json()
-                        changeFiles(data.files)
-                        let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
-                        let data2 = await resp2.json()
-                        changeMetaData(data2)
-                        setUploadProg(null)
-                        localStorage.removeItem("key")
-                        count++;
-                    } catch (e) {
-                      switch(e) {
-                        case "DoNothing":
-                          break;
-                        case "OverwriteRejected":
-                          setUploadProg(null)
+                        let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
+                          method: "POST",
+                          headers: {
+                            "Content-Type": "text/plain",
+                            "X-secret-token": (time as any).key
+                          },
+                          body: "END"
+                        })
+                        if (!res.ok) {
+                          let data = await res.json()
                           setLoadingState(false)
-                          setFileCount({done: 0, remaining: 0, on: ""})
-                          return setMessage("File overwrite has been rejected.")
-                        default:
-                      setMessage("Looks like an error has occured, please check the console.")
-                      setUploadProg(null)
-                      setLoadingState(false)
-                      setFileCount({done: 0, remaining: 0, on: ""})
-                      return console.error(e)   
+                          obj.message = data.message
+                          obj.errored = true
+                          return replaceObj(obj)
+                        }
+                          let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
+                          let data = await resp.json()
+                          changeFiles(data.files)
+                          let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
+                          let data2 = await resp2.json()
+                          changeMetaData(data2)
+                          listOfEdits.splice(listOfEdits.findIndex(x => x.path == `${filePath}${filePath == "/" ? "" : "/"}${file.name}`), 1)
+                          changeEdits([...listOfEdits])
+                          return "SUCCESS"
+                      } catch (e) {
+                        obj.errored = true
+                        switch(e) {
+                          case "DoNothing":
+                            return replaceObj(obj)
+                          case "OverwriteRejected":
+                            obj.message = "File overwrite has been rejected."
+                            return replaceObj(obj)
+                          default:
+                            obj.message = "Looks like an error has occured, please check the console."
+                            await replaceObj(obj)
+                            return console.error(e)   
+                        }
                       }
-                    }
+                    }, 0)
                   }
                   setLoadingState(false)
-                  setFileCount({done: 0, remaining: 0, on: ""})
-                  setMessage(`Successfully added ${files.files.length} objects!`)
                   files.value = ""
                 }}>Submit</Button>
                 <br></br>
@@ -338,9 +397,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                     if (!resp.ok) {
                                       let data = await resp.json()
                                       setLoadingState(false)
-                                      setUploadProg(null)
                                       setMessage(data.message)
-                                      setUploadProg(null)
                                       reject()
                                     }
                                     resolve("")
@@ -377,12 +434,34 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                 }}>Submit</Button>
       </div> : ""}
       <br></br>
-      <h5 style={{textAlign: "center"}}>{uploadProg ? `${uploadProg.done} / ${uploadProg.remaining} chunks` : ""}</h5>
-      <h6 style={{ textAlign: "center", marginTop: "20px" }}>{fileCount.remaining ? `Currently on path: ${fileCount.on}` : ""}</h6>
+      {edits.length ? <Table className="table">
+        <thead>
+                <tr>
+                  <th>Path</th>
+                  <th>Upload Progress</th>
+                  <th>Message</th>
+                  <th><Button style={{backgroundColor: "red"}} onClick={() => {
+                    changeEdits(edits.filter(x => x.errored))
+                    for(const {timeout} of edits.filter(x => x.cancelable != false)) {
+                      (timeout as any).cmd = "STOPIT"
+                    }
+                  }}>Clear All</Button></th>
+                </tr>
+        </thead> 
+        <tbody>
+            {edits.map(e => <tr key={e.path}>
+              <td>{e.path}</td>
+              <td>{e.remaining} / {e.total} chunks</td>
+              <td>{e.message}</td>
+              <th><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
+                if(e.errored) changeEdits(edits.filter(x => e.path != x.path))
+                if(e.cancelable != false) {(e.timeout as any).cmd = "STOPIT"}
+              }}>Clear</Button></th>
+            </tr>)}
+        </tbody>
+      </Table> : ""}
+      <br></br>
       <h5 style={{textAlign: "center"}}>{message}</h5>
-      <div style={{display: "grid", placeItems: "center"}}>{uploadProg ? <Button onClick={async (e) => {
-        localStorage.setItem("cmd", "STOPIT")
-      }}>Cancel</Button> : ""}</div>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
         <Table className="table">
           <thead>

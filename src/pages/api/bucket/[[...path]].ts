@@ -106,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             authorized: !viewable,
                             url: (await mappings.findOne({path: specifiedPath + "/" + e})).url,
                             path: specifiedPath + "/" + e,
-                            mime: !isDir ? (types as any)["." + e.split(".").at(-1)] || "application/octet-stream" : undefined,
+                            mime: !isDir ? (types as any)["." + e.split(".").at(-1).toLowerCase()] || "application/octet-stream" : undefined,
                             size: prettyBytes(stat.size),
                             modified: dayjs(stat.mtimeMs).format("MMMM DD, YYYY hh:mm:ss A")
                         }
@@ -270,7 +270,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     if (!req.query.download) {
                         res.setHeader("content-disposition", `inline; filename="${specifiedPath.split("/").at(-1)}"`);
                         res.setHeader("accept-ranges", "bytes");
-                        let str = "." + specifiedPath.split("/").at(-1)?.split(".").at(-1) || "a"
+                        let str = "." + specifiedPath.split("/").at(-1)?.split(".").at(-1)?.toLowerCase() || "a"
                         res.setHeader("Content-Type", (types as any)[str]);
                     } else {
                         res.setHeader("content-disposition", `attachment; filename="${specifiedPath.split("/").at(-1)}"`);
@@ -329,7 +329,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     }
                 }
                 let alreadyCreated =  await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
-                if(alreadyCreated?.directory == false)  return res.status(401).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
+                if(!req.query.overwrite && alreadyCreated?.directory == false)  return res.status(401).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
                 if(alreadyCreated?.directory == true)  return res.status(401).send({ error: "400 BAD REQUEST", message: "Folder with the same name already exists"})
                     let buffer = Buffer.from(req.body);
                     await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"),  buffer).catch((e) => {
