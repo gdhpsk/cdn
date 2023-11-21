@@ -317,7 +317,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     res.writeHead(200, {
                         'content-length': stat.size
                     })
-                    const file = createReadStream(bucket as string + specifiedPath)
+                    const file = createReadStream(bucket as string + specifiedPath, {highWaterMark: 1024 * 1024})
                     file.on("data", (chunk) => res.write(chunk))
                     file.on("end", () => res.end())
                     break;
