@@ -28,6 +28,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
     if(edits.length && editsDone)  setEditsDone(false)
     if(!edits.length && !editsDone) {
       setMessage("Tasks completed successfully.")
+      setDeleting([])
       let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
       let data = await resp.json()
       changeFiles(data.files)
@@ -79,10 +80,15 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
                 method: "DELETE"
               })
-              if (res.status != 204) {
+              if (!res.ok) {
                 let json = await res.json()
                       switch(json.type) {
                         case "OverwriteErr":
+                          await new Promise((resolve, reject) => {
+                            setInterval(() => {
+                              if(!mySwal.isVisible()) resolve("")
+                            }, 100)
+                          })
                           await new Promise((resolve, reject) => {
                             mySwal.fire({
                               background: "#white",
@@ -122,7 +128,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                           setLoadingState(false)
                           obj.message = json.message
                           obj.errored = true
-                          replaceObj(obj)
+                          return replaceObj(obj)
                       }
               }
               listOfEdits.splice(listOfEdits.findIndex(x => x.path == object.path), 1)
@@ -146,7 +152,6 @@ export default function Home({ items, path, filePath, data, editable, previousPa
           }, 0)
         }
         setLoadingState(false)
-        setDeleting([])
       }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
       <InputGroup.Text id="lu">Upload FIles</InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="Files..." id="files_to_upload" type="file" multiple></Form.Control>
@@ -220,6 +225,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             let data = await res.json()
                             switch(data.type) {
                               case "InvalidTokenErr":
+                                await new Promise((resolve, reject) => {
+                                  setInterval(() => {
+                                    if(!mySwal.isVisible()) resolve("")
+                                  }, 100)
+                                })
                                 let overwrite = await new Promise((resolve, reject) => {
                                   mySwal.fire({
                                     background: "#white",
@@ -263,6 +273,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                 await replaceObj(obj)
                                 continue;
                                 case "OverwriteErr":
+                                  await new Promise((resolve, reject) => {
+                                    setInterval(() => {
+                                      if(!mySwal.isVisible()) resolve("")
+                                    }, 100)
+                                  })
                                   let ow = await new Promise((resolve, reject) => {
                                     mySwal.fire({
                                       background: "#white",
@@ -376,11 +391,16 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(folder.value)}`, {
                     method: "POST"
                   })
-                  if(res.status !== 204) {
+                  if(!res.ok) {
                     let json = await res.json()
                     switch(json.type) {
                       case "OverwriteErr":
                         try {
+                          await new Promise((resolve, reject) => {
+                            setInterval(() => {
+                              if(!mySwal.isVisible()) resolve("")
+                            }, 100)
+                          })
                         await new Promise((resolve, reject) => {
                           mySwal.fire({
                             background: "#white",
@@ -442,11 +462,12 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   <th>Upload Progress</th>
                   <th>Message</th>
                   <th><Button style={{backgroundColor: "red"}} onClick={() => {
-                    changeEdits(edits.filter(x => x.errored))
-                    for(const {timeout} of edits.filter(x => x.cancelable != false)) {
+                    changeEdits(edits.filter(x => !x.errored))
+                    for(const {timeout} of edits.filter(x => !x.errored && x.cancelable != false)) {
                       (timeout as any).cmd = "STOPIT"
                     }
                   }}>Clear All</Button></th>
+                  <th>{edits.length}</th>
                 </tr>
         </thead> 
         <tbody>
@@ -454,10 +475,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               <td>{e.path}</td>
               <td>{e.remaining} / {e.total} chunks</td>
               <td>{e.message}</td>
-              <th><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
+              <td><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
                 if(e.errored) changeEdits(edits.filter(x => e.path != x.path))
                 if(e.cancelable != false) {(e.timeout as any).cmd = "STOPIT"}
-              }}>Clear</Button></th>
+              }}>Clear</Button></td>
+              <td></td>
             </tr>)}
         </tbody>
       </Table> : ""}
@@ -532,10 +554,15 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                       newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
                     })
                   })
-                  if(res.status !== 204) {
+                  if(!res.ok) {
                     let json = await res.json()
                     switch(json.type) {
                       case "TransactionOverwriteErr":
+                        await new Promise((resolve, reject) => {
+                          setInterval(() => {
+                            if(!mySwal.isVisible()) resolve("")
+                          }, 100)
+                        })
                         await new Promise((resolve, reject) => {
                           mySwal.fire({
                             background: "#white",
@@ -543,10 +570,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             confirmButtonColor: '#08c',
                             html: <>
                                 <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
+                                <br></br>
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
-                                    let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwrite=true`, {
+                                    let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwrite=true&overwriteGroup=true`, {
                                       method: "PATCH",
                                       headers: {
                                         "Content-Type": "application/json"
@@ -576,12 +604,18 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         break;
                         case "GroupOverwriteErr":
                           await new Promise((resolve, reject) => {
+                            setInterval(() => {
+                              if(!mySwal.isVisible()) resolve("")
+                            }, 100)
+                          })
+                          await new Promise((resolve, reject) => {
                             mySwal.fire({
                               background: "#white",
                               color: "#333333",
                               confirmButtonColor: '#08c',
                               html: <>
-                                  <h3 style={{textAlign: "center"}}>Path {newName.newPath}{newName.newPath == "/" ? "" : "/"}{newName.value}{e.isDir ? "" : `.${e.type}`} already exists. Do you want to overwrite?</h3>
+                                  <h4 style={{textAlign: "center"}}>Path {newName.newPath}{newName.newPath == "/" ? "" : "/"}{newName.value}{e.isDir ? "" : `.${e.type}`} already exists. Do you want to overwrite?</h4>
+                                  <br></br>
                                   <div>
                                     <Button style={{float: "left"}} onClick={async () => {
                                       mySwal.clickConfirm()

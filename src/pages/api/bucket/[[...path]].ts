@@ -184,7 +184,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 try {
                     if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter a group name to create!" })
                     let existing = await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
-                    if(existing?.directory == true) return res.status(400).send({ error: "400 BAD REQUEST", message: "That group already exists!", type: "OverwriteErr"})
+                    if(!req.query.overwrite && existing?.directory == true) return res.status(400).send({ error: "400 BAD REQUEST", message: "That group already exists!", type: "OverwriteErr"})
                     if(existing?.directory == false) return res.status(400).send({ error: "400 BAD REQUEST", message: `That group is of type "${existing.directory ? "Folder" : "File"}" meaning it cannot be overwritten!`})
                     if(req.query.overwrite) {
                         await fs.mkdir(bucket as string + "/" + (req.query.path as string[]).join("/"), {recursive: true})
@@ -239,10 +239,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }
                     })
                     if (!valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to move the object to the following path." })
-                    let exists = await mappings.findOne({path: req.body.newDir})
-                        if(exists !== null && exists?.directory == existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: "That new object directory already exists. Pass the overwriteGroup param to try and overwrite it.", type: "GroupOverwriteErr"})
-                        if(exists !== null  && exists?.directory !== existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwrite) {
+                        await transactions.deleteOne({path: req.body.newDir})
                         await transactions.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                             $set: {
                                 path: {
@@ -256,8 +254,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }])
                     } else {
                         let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
-                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "TransactionOverwriteErr", affectedFiles: exists.map(e => e.path)})
+                        if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it.", type: "TransactionOverwriteErr", affectedFiles: exists.map(e => e.path)})
                     }
+                    let exists = await mappings.findOne({path: req.body.newDir})
+                        if(!req.query.overwriteGroup && exists !== null && exists?.directory == existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: "That new object directory already exists. Pass the overwriteGroup param to try and overwrite it.", type: "GroupOverwriteErr"})
+                        if(exists !== null  && exists?.directory !== existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwriteGroup) {await mappings.deleteOne({path: req.body.newDir})};
                     await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + req.body.newDir)
                     await mappings.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
