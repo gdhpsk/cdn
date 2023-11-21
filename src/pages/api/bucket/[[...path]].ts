@@ -138,7 +138,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         let isDir = stat.isDirectory()
                         let {viewable, url} =extras
                         return {
-                            name: !isDir ? e.split(".").slice(0, e.split(".").length-1).join(".") : e,
+                            name: !isDir && e.indexOf(".") != -1 ? e.split(".").slice(0, e.split(".").length-1).join(".") : e,
                             type: !isDir ? e.split(".").at(-1) : undefined,
                             isDir,
                             authorized: viewable,
@@ -310,7 +310,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         res.setHeader("content-disposition", `inline; filename="${req.query.name ? req.query.name + "." + specifiedPath.split("/").at(-1)?.split(".").at(-1) : specifiedPath.split("/").at(-1)}"`);
                         res.setHeader("accept-ranges", "bytes");
                         let str = "." + specifiedPath.split("/").at(-1)?.split(".").at(-1)?.toLowerCase() || "a"
-                        res.setHeader("Content-Type", (types as any)[str]);
+                        res.setHeader("Content-Type", (types as any)[str] || "application/octet-stream");
                     } else {
                         res.setHeader("content-disposition", `attachment; filename="${req.query.name ? req.query.name + "." + specifiedPath.split("/").at(-1)?.split(".").at(-1) : specifiedPath.split("/").at(-1)}"`);
                     }
@@ -318,16 +318,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         'content-length': stat.size
                     })
                     const file = await fs.readFile(bucket as string + specifiedPath)
-                    const stream = new Readable()
-                    stream._read = () => {}
-                    for(let i = 0; i < file.length; i += 8000000) {
-                        stream.push(file.subarray(i, i+8000000))
+                    for(let i = 0; i < file.length; i += (64 * 1024)) {
+                        res.write(file.subarray(i, i+(64 * 1024)))
                     }
-                    await new Promise((resolve, reject) => {
-                        stream.pipe(res)
-                        stream.on("end", resolve)
-                    })
-                    return res.end()
+                    res.end()
+                    break;
                 } catch (_) {
                     console.log(_)
                     return res.status(404).send({ error: "404 NOT FOUND", message: "Could not find the object requested" })
