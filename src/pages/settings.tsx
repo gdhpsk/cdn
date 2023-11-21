@@ -10,7 +10,7 @@ export default function Home({ data, metadata }: any) {
     let [message, setMessage] = useState("")
   return (
     <Container>
-      <h2 style={{ textAlign: "center", marginTop: "100px" }}>Settings page for Hpsk CDN</h2>
+      <h2 style={{ textAlign: "center", marginTop: "100px" }}>Settings page for hpskcloud</h2>
       <h3 style={{ textAlign: "center", marginTop: "50px" }}>{message}</h3>
       <Table className="table">
           <thead>
