@@ -241,7 +241,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     if (!valid) return res.status(401).send({ error: "401 UNAUTHORIZED", message: "You are not authorized to move the object to the following path." })
                     if(req.query.overwrite) {
                         await transactions.deleteOne({path: req.body.newDir})
-                        await transactions.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
+                        await transactions.updateMany({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                             $set: {
                                 path: {
                                     $replaceOne: {
@@ -253,7 +253,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             }
                         }])
                     } else {
-                        let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                        let exists = await transactions.find({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                         if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are editing currently has uploading objects associated with it.", type: "TransactionOverwriteErr", affectedFiles: exists.map(e => e.path)})
                     }
                     let exists = await mappings.findOne({path: req.body.newDir})
@@ -261,7 +261,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         if(exists !== null  && exists?.directory !== existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwriteGroup) {await mappings.deleteOne({path: req.body.newDir})};
                     await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + req.body.newDir)
-                    await mappings.updateMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
+                    await mappings.updateMany({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                         $set: {
                             path: {
                                 $replaceOne: {
@@ -282,13 +282,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     let existing = await mappings.exists({path: "/" + (req.query.path as string[]).join("/"), directory: true})
                     if(!existing) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
                     if(req.query.overwrite) {
-                        await transactions.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                        await transactions.deleteMany({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                     } else {
-                        let exists = await transactions.find({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                        let exists = await transactions.find({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                         if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are deleting currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: exists.map(e => e.path)})
                     }
                     await fs.rm(bucket as string + "/" + (req.query.path as string[]).join("/"), { recursive: true, force: true })
-                    await mappings.deleteMany({path: new RegExp("/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
+                    await mappings.deleteMany({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")})
                     return res.status(204).send(null)
                 } catch (_) {
                     console.log(_)
