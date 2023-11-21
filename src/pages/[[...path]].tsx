@@ -7,6 +7,7 @@ import withReactContent from 'sweetalert2-react-content'
 export default function Home({ items, path, filePath, data, editable, previousPaths }: any) {
   let mySwal = withReactContent(Swal)
   let [metadata, changeMetaData] = useState(data)
+  let [originalFiles, changeOriginalFiles] = useState(items)
   let [files, changeFiles] = useState(items)
   let [editing, changeEditing] = useState<any[]>([])
   let [message, setMessage] = useState("")
@@ -32,6 +33,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
       let data = await resp.json()
       changeFiles(data.files)
+      changeOriginalFiles(data.files)
       let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
       let data2 = await resp2.json()
       changeMetaData(data2)
@@ -69,14 +71,14 @@ export default function Home({ items, path, filePath, data, editable, previousPa
           }
           const replaceObj = async (o: Record<any, any>) => {
               listOfEdits.splice(listOfEdits.findIndex(x => x.path == o.path), 1, o)
-              changeEdits([...listOfEdits])
+              changeEdits([...edits.filter(x => x.cancelable != false), ...listOfEdits])
           }
           setTimeout(async function item() {
             try {
               obj.path = object.path
               obj.timeout = item
               listOfEdits.push(obj)
-              changeEdits([...listOfEdits])
+              changeEdits([...edits.filter(x => x.cancelable != false), ...listOfEdits])
               let res = await fetch(`/api/bucket/${object.dir ? "dir" : 'file'}${encodeURI(object.path)}`, {
                 method: "DELETE"
               })
@@ -132,7 +134,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                       }
               }
               listOfEdits.splice(listOfEdits.findIndex(x => x.path == object.path), 1)
-              changeEdits([...listOfEdits])
+              changeEdits([...edits.filter(x => x.cancelable != false), ...listOfEdits])
               return "SUCCESS"
             } catch (e) {
               obj.errored = true
@@ -178,7 +180,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                     }
                     const replaceObj = async (o: Record<any, any>) => {
                         listOfEdits.splice(listOfEdits.findIndex(x => x.path == o.path), 1, o)
-                        changeEdits([...listOfEdits])
+                        changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
                     }
                     setTimeout(async function time() {
                       try {
@@ -187,7 +189,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         obj.total = Math.ceil(fileData.length / 8000000)
                         obj.timeout = time
                         listOfEdits.push(obj)
-                        changeEdits(listOfEdits)
+                        changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
                         for(let i = 0; i < fileData.length; i += 8000000) {
                           let {key, cmd} = time as any
                           let array = Array.from(fileData.slice(i, i+8000000))
@@ -217,7 +219,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                               obj.message = "Successfully cancelled upload!"
                               setTimeout(() => {
                                 listOfEdits.splice(listOfEdits.findIndex(x => x.path == obj.path), 1)
-                                changeEdits(listOfEdits)
+                                changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
                             }, 3000)
                               return replaceObj(obj)
                           }
@@ -353,11 +355,12 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                           let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                           let data = await resp.json()
                           changeFiles(data.files)
+                          changeOriginalFiles(data.files)
                           let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
                           let data2 = await resp2.json()
                           changeMetaData(data2)
                           listOfEdits.splice(listOfEdits.findIndex(x => x.path == `${filePath}${filePath == "/" ? "" : "/"}${file.name}`), 1)
-                          changeEdits([...listOfEdits])
+                          changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
                           return "SUCCESS"
                       } catch (e) {
                         obj.errored = true
@@ -449,6 +452,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()
                   changeFiles(data.files)
+                  changeOriginalFiles(data.files)
                   setLoadingState(false)
                   setMessage(`Successfully added the folder "${folder.value}"!`)
                   folder.value = ""
@@ -463,8 +467,9 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   <th>Message</th>
                   <th><Button style={{backgroundColor: "red"}} onClick={() => {
                     changeEdits(edits.filter(x => !x.errored))
-                    for(const {timeout} of edits.filter(x => !x.errored && x.cancelable != false)) {
-                      (timeout as any).cmd = "STOPIT"
+                    for(const edit of edits.filter(x => !x.errored && x.cancelable != false)) {
+                      changeEdits([...edits.filter(x => x.path != edit.path), {...edit, message: "Cancelling upload..."}]);
+                      (edit.timeout as any).cmd = "STOPIT"
                     }
                   }}>Clear All</Button></th>
                   <th>{edits.length}</th>
@@ -477,7 +482,10 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               <td>{e.message}</td>
               <td><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
                 if(e.errored) changeEdits(edits.filter(x => e.path != x.path))
-                if(e.cancelable != false) {(e.timeout as any).cmd = "STOPIT"}
+                if(e.cancelable != false) {
+                  changeEdits([...edits.filter(x => x.path != e.path), {...e, message: "Cancelling upload..."}]);
+                  (e.timeout as any).cmd = "STOPIT"
+                }
               }}>Clear</Button></td>
               <td></td>
             </tr>)}
@@ -486,6 +494,14 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       <br></br>
       <h5 style={{textAlign: "center"}}>{message}</h5>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
+      <InputGroup style={{width: "min(800px, 100%)"}}>
+      <InputGroup.Text id="lu">Search</InputGroup.Text>
+          <Form.Control required aria-describedby='lu' placeholder="File Name..." type="text" onChange={(e) => {
+            let {value} = e.target
+            changeFiles([...originalFiles.filter((x:any) => x.name.toLowerCase().includes(value.toLowerCase()))])
+          }}></Form.Control>
+      </InputGroup>
+      <br></br>
         <Table className="table">
           <thead>
             <tr>
@@ -513,6 +529,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                 let res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                 let data = await res.json()
                 changeFiles(data.files)
+                changeOriginalFiles(data.files)
                 let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
                 let data2 = await resp2.json()
                 changeMetaData(data2)
@@ -655,6 +672,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                   let data = await resp.json()
                   changeFiles(data.files)
+                  changeOriginalFiles(data.files)
                   setLoadingState(false)
                   setMessage(`Successfully edited object dir to "${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}"!`)
                   changeEditing(editing.filter(i => i.path !== e.path))
