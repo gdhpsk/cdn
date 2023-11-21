@@ -317,11 +317,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     res.writeHead(200, {
                         'content-length': stat.size
                     })
-                    const file = await fs.readFile(bucket as string + specifiedPath)
-                    for(let i = 0; i < file.length; i += (64 * 1024)) {
-                        res.write(file.subarray(i, i+(64 * 1024)))
-                    }
-                    res.end()
+                    const file = createReadStream(bucket as string + specifiedPath)
+                    file.on("data", (chunk) => res.write(chunk))
+                    file.on("end", () => res.end())
                     break;
                 } catch (_) {
                     console.log(_)
