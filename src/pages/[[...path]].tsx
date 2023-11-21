@@ -52,6 +52,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       <h2 style={{ textAlign: "center", marginTop: "30px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>Extra money being used: ${metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00}</h5>
       <h1 style={{ textAlign: "center", marginTop: "30px" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
+      <h6 style={{ textAlign: "center", marginTop: "60px" }}>{files.filter((e:any) => e.isDir).length} folders, {files.filter((e:any) => !e.isDir).length} files</h6>
       <br></br>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         let listOfEdits: any[] = []
