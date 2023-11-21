@@ -4,8 +4,6 @@ export default function Document() {
   return (
     <Html lang="en">
       <Head>
-      <meta property="og:title" content="The Hpsk CDN"/>
-    <meta property="og:description" content="My very own CDN, very cool ikr"/>
       <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta1/dist/css/bootstrap.min.css"
           rel="stylesheet"

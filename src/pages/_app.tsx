@@ -1,6 +1,7 @@
 import '@/styles/globals.css'
 import type { AppProps } from 'next/app'
 import Nav from '../components/Nav'
+import Head from 'next/head'
 
 export default function App({ Component, pageProps }: AppProps) {
   let obj: Record<any, any> = {
@@ -9,7 +10,12 @@ export default function App({ Component, pageProps }: AppProps) {
   if(pageProps.rootUser) {
     obj["Settings"] = "/settings"
   }
-  return <><Nav 
+  return <>
+  <Head>
+      <meta property="og:title" content={pageProps.items ? "Folder: " + pageProps.filePath.split("/").at(-1) || "/" : "Settings page"}/>
+    <meta property="og:description" content={pageProps.items ? `${pageProps.items.filter((e:any) => e.isDir).length} folders, ${pageProps.items.filter((e:any) => !e.isDir).length} files` : "Settings page for the hpsk cdn"}/>
+      </Head>
+  <Nav 
   name="Hpsk's CDN"
   mainRoutes={obj}
   active={""}
