@@ -273,6 +273,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     }])
                     return res.status(204).send(null)
                 } catch (_) {
+                    console.log(_)
                     return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to edit." })
                 }
             case "DELETE":
