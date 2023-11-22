@@ -15,30 +15,6 @@ let { bucket } = process.env
 function escapeRegExp(string: string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-
-  function renameFile(originalPath: string, newPath: string) {
-    return new Promise((resolve, reject) => {
-        const readStream = createReadStream(originalPath);
-        const writeStream = createWriteStream(newPath);
-    
-        readStream.on('error', reject);
-    
-        writeStream.on('error', reject);
-    
-        writeStream.on('close', () => {
-            // Close the read stream
-            readStream.close(() => {
-                // Delete the original file
-                fs.unlink(originalPath);
-                // resolve
-                resolve("")
-            });
-        });
-    
-        // Pipe the read stream to the write stream
-        readStream.pipe(writeStream);
-    })
-}
   
 
 
@@ -283,7 +259,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         if(!req.query.overwriteGroup && exists !== null && exists?.directory == existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: "That new object directory already exists. Pass the overwriteGroup param to try and overwrite it.", type: "GroupOverwriteErr"})
                         if(exists !== null  && exists?.directory !== existing.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwriteGroup) {await mappings.deleteOne({path: req.body.newDir})};
-                    await renameFile(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + req.body.newDir)
+                    await fs.rename(bucket as string + "/" + (req.query.path as string[]).join("/"), bucket as string + req.body.newDir)
                     await mappings.updateMany({path: new RegExp("^/" + escapeRegExp((req.query.path as string[]).join("/")) + "($|/)")}, [{
                         $set: {
                             path: {
