@@ -39,6 +39,9 @@ export default function Home({ items, path, filePath, data, editable, previousPa
     if(edits.length && editsDone)  setEditsDone(false)
     if(!edits.length && !editsDone) {
       setMessage("Tasks completed successfully.")
+      setTimeout(() => {
+        setMessage("")
+      }, 3000)
       setDeleting([])
       let resp = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
       let data = await resp.json()
