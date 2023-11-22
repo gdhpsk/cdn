@@ -62,23 +62,23 @@ export default function Home({ items, path, filePath, data, editable, previousPa
   return (
     <Container>
       <div style={{display: "grid", placeItems: "center"}}>
-      <div style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "50px", width: "fit-content", padding: "20px", display: "grid", placeItems:"center"}}>
+      <div className="scale" style={{backgroundColor: "lightblue", borderRadius: "15px", marginTop: "50px", width: "fit-content", padding: "20px", display: "grid", placeItems:"center"}}>
       <h6 style={{ textAlign: "center", marginTop: "10px"}}>{metadata.user ? `User: ${metadata.user.toUpperCase()}` : "User: NULL"}</h6>
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>${5 + (metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00 as any)} / month</h5>
       <h2 style={{ textAlign: "center", marginTop: "10px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
-      <div style={{width: "70%", backgroundColor: "lightcyan", height: "24px"}}>
-        <div style={{width: `${(metadata.used / metadata.total*100)}%`, backgroundColor: "silver", height: "24px", opacity: "80%"}}>
+      <div style={{width: "70%", backgroundColor: "lightcyan", height: "24px", borderRadius: "24px"}}>
+        <div style={{width: `${(metadata.used / metadata.total*100)}%`, backgroundColor: "silver", height: "24px", opacity: "80%", borderRadius: "24px"}}>
 
         </div>
       </div>
       </div>
       </div>
       <div style={{display: "grid", placeItems: "center"}}>
-      <h1 style={{ textAlign: "center", marginTop: "30px", paddingBottom: "13px", paddingTop: "8px", paddingRight: "20px", paddingLeft: "20px", borderRadius: "10px", backgroundColor: "lightblue", width: "fit-content" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? <>&nbsp;&nbsp;&nbsp;<Arrow></Arrow>&nbsp;&nbsp;&nbsp;</> : ""}<span className='clickabledir' key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{e.name == "/" ? <Server></Server> : decodeURIComponent(e.name)}</span></>)}</h1>
+      <h1 style={{ textAlign: "center", marginTop: "30px", paddingBottom: "13px", paddingTop: "8px", paddingRight: "20px", paddingLeft: "20px", borderRadius: "10px", backgroundColor: "lightblue", width: "fit-content" }} className="scale">{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? <>&nbsp;&nbsp;&nbsp;<Arrow></Arrow>&nbsp;&nbsp;&nbsp;</> : ""}<span className='clickabledir' key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{e.name == "/" ? <Server></Server> : decodeURIComponent(e.name)}</span></>)}</h1>
       </div>
       
       <div style={{display: "grid", placeItems: "center"}}>
-      <div style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "25px", width: "fit-content", padding: "10px", display: "grid", placeItems:"center"}}>
+      <div className="scale" style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "25px", width: "fit-content", padding: "10px", display: "grid", placeItems:"center"}}>
         <h6 style={{ textAlign: "center", marginTop: "10px" }}>{files.filter((e:any) => e.isDir).length} folders, {files.filter((e:any) => !e.isDir).length} files</h6>
       </div>
       </div>
@@ -147,6 +147,10 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                       setLoadingState(false)
                                       obj.message = json.message
                                       replaceObj(obj)
+                                      setTimeout(() => {
+                                        listOfEdits.splice(listOfEdits.findIndex(x => x.path == object.path), 1)
+                                        changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
+                                    }, 3000)
                                       reject("OverwriteRejected")
                                     }}>No</Button>
                                   </div>
@@ -291,6 +295,10 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                           }}>Yes</Button>
                                           <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
                                             mySwal.clickConfirm()
+                                            setTimeout(() => {
+                                              listOfEdits.splice(listOfEdits.findIndex(x => x.path == `${filePath}${filePath == "/" ? "" : "/"}${file.name}`), 1)
+                                              changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
+                                          }, 3000)
                                             reject("OverwriteRejected")
                                           }}>No</Button>
                                         </div>
@@ -332,6 +340,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                               if (!res.ok) {
                                                 setLoadingState(false)
                                                 obj.message = data.message
+                                                obj.errored = true
                                                 await replaceObj(obj)
                                                 reject("DoNothing")
                                               }
@@ -339,6 +348,10 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                             }}>Yes</Button>
                                             <Button style={{float: "right", backgroundColor: "red"}} onClick={() => {
                                               mySwal.clickConfirm()
+                                              setTimeout(() => {
+                                                  listOfEdits.splice(listOfEdits.findIndex(x => x.path == `${filePath}${filePath == "/" ? "" : "/"}${file.name}`), 1)
+                                                  changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
+                                              }, 3000)
                                               reject("OverwriteRejected")
                                             }}>No</Button>
                                           </div>
@@ -506,14 +519,16 @@ export default function Home({ items, path, filePath, data, editable, previousPa
         <tbody>
             {edits.map(e => <tr key={e.path}>
               <td>{e.path}</td>
-              <td><div style={{width: "150px", backgroundColor: "lightcyan", height: "24px"}}>
-        <div style={{width: `${(e.remaining / e.total*100)}%`, backgroundColor: "blue", height: "24px"}}>
+              <td><><div style={{width: "150px", backgroundColor: "lightskyblue", height: "24px", borderRadius: "24px"}}>
+        <div style={{width: `${(e.remaining / e.total*100)}%`, backgroundColor: "blue", height: "24px", borderRadius: "24px"}}>
 
         </div>
-      </div></td>
+      </div>
+      <span style={{textAlign: "center", width: "150px", display: "inline-block"}}>{(e.remaining / e.total*100).toFixed(2)}%</span>
+      </></td>
               <td>{e.message}</td>
               <td><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
-                if(e.errored) changeEdits(edits.filter(x => e.path != x.path))
+                if(edits.find(x => x.path == e.path)?.errored) return changeEdits([...edits.filter(x => e.path != x.path)])
                 if(e.cancelable != false) {
                   changeEdits([...edits.filter(x => x.path != e.path), {...e, message: "Cancelling upload..."}]);
                   (e.timeout as any).cmd = "STOPIT"
