@@ -63,7 +63,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
     <Container>
       <div style={{display: "grid", placeItems: "center"}}>
       <div style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "50px", width: "fit-content", padding: "20px", display: "grid", placeItems:"center"}}>
-      <h6 style={{ textAlign: "center", marginTop: "10px"}}>{metadata.user ? `User: ${metadata.user.toUpperCase()}` : "NULL"}</h6>
+      <h6 style={{ textAlign: "center", marginTop: "10px"}}>{metadata.user ? `User: ${metadata.user.toUpperCase()}` : "User: NULL"}</h6>
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>${5 + (metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00 as any)} / month</h5>
       <h2 style={{ textAlign: "center", marginTop: "10px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
       <div style={{width: "70%", backgroundColor: "lightcyan", height: "24px"}}>
