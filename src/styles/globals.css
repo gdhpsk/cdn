@@ -1,3 +1,12 @@
 table {
   width: max(500px, 100%);
 }
+
+.clickabledir {
+  display: inline-block;
+}
+
+.clickabledir:hover {
+  scale: 1.1;
+  transition-duration: 0.5s;
+}

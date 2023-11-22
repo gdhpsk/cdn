@@ -3,6 +3,8 @@ import { Row, Col, Accordion, Button, Nav, InputGroup, Form } from 'react-bootst
 import Swal from 'sweetalert2'
 import styles from "@/styles/Leaderboard.module.css"
 import withReactContent from 'sweetalert2-react-content'
+import Key from "@/components/icons/Key"
+import Checkmark from "@/components/icons/Checkmark"
 
 const Auth: React.FC = () => {
     let mySwal = withReactContent(Swal)
@@ -23,13 +25,13 @@ const Auth: React.FC = () => {
                 <Button type="button" onClick={() => {
                     document.cookie = `token=${(document.getElementById("log_email") as any).value}`
                     window.location.reload()
-                }}>Submit</Button>
+                }}><Checkmark></Checkmark></Button>
                 </Form>
             </div>
         </>
     })
 }
-    return <Nav.Link onClick={display} style={{color: "white"}}>Key</Nav.Link>
+    return <Nav.Link onClick={display} style={{color: "white"}}><Key></Key></Nav.Link>
 }
 
 export default Auth

@@ -9,7 +9,6 @@ import getFolderSize from "get-folder-size"
 import { createReadStream, createWriteStream } from "fs";
 import crypto from "crypto"
 import bcrypt from "bcrypt"
-import { Readable } from "stream";
 
 let { bucket } = process.env
 
@@ -31,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
         let total = 250 // in gigs
         return res.status(200).send({user, total, used: JSON.parse((size / 1000 / 1000 / 1000).toFixed(5))})
     }
-    if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(403).send({ error: "403 FORBIDDEN", message: "Could not find the URL and method provided." })
+    if (!req.query.path || !["dir", "file"].includes((req.query.path[0]))) return res.status(400).send({ error: "400 BAD REQUEST", message: "Could not find the URL and method provided." })
     if(req.method == "GET") {
         let path = req.query.path[1] ? await mappings.findOne({url: "/" + (req.query.path[1] || "")}) : {
             path: ""
@@ -358,8 +357,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     }
                 }
                 let alreadyCreated =  await mappings.findOne({path: "/" + (req.query.path as string[]).join("/")})
-                if(!req.query.overwrite && alreadyCreated?.directory == false)  return res.status(401).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
-                if(alreadyCreated?.directory == true)  return res.status(401).send({ error: "400 BAD REQUEST", message: "Folder with the same name already exists"})
+                if(!req.query.overwrite && alreadyCreated?.directory == false)  return res.status(400).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
+                if(alreadyCreated?.directory == true)  return res.status(400).send({ error: "400 BAD REQUEST", message: "Folder with the same name already exists"})
                     let buffer = Buffer.from(req.body);
                     await fs.writeFile(bucket as string + "/" + (req.query.path as string[]).join("/"),  buffer).catch((e) => {
                         console.log(e)

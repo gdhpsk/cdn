@@ -1,6 +1,16 @@
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
+import Arrow from "@/components/icons/Arrow"
+import Download from "@/components/icons/Download"
+import Reload from "@/components/icons/Reload"
+import Folder from "@/components/icons/Folder"
+import Upload from "@/components/icons/Upload"
+import FolderCreate from "@/components/icons/FolderCreate"
+import Search from "@/components/icons/Search"
+import Edit from "@/components/icons/Edit"
+import Checkmark from "@/components/icons/Checkmark"
+import Server from "@/components/icons/Server"
+import XMark from "@/components/icons/X"
 import Swal from 'sweetalert2'
 import withReactContent from 'sweetalert2-react-content'
 
@@ -51,11 +61,28 @@ export default function Home({ items, path, filePath, data, editable, previousPa
   }, [message])
   return (
     <Container>
-      <h6 style={{ textAlign: "center", marginTop: "60px" }}>{metadata.user ? `Logged in as: ${metadata.user}` : ""}</h6>
-      <h2 style={{ textAlign: "center", marginTop: "30px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
-      <h5 style={{ textAlign: "center", marginTop: "10px" }}>Extra money being used: ${metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00}</h5>
-      <h1 style={{ textAlign: "center", marginTop: "30px" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? " => " : ""}<span style={{textDecoration: "underline"}} key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{decodeURIComponent(e.name)}</span></>)}</h1>
-      <h6 style={{ textAlign: "center", marginTop: "60px" }}>{files.filter((e:any) => e.isDir).length} folders, {files.filter((e:any) => !e.isDir).length} files</h6>
+      <div style={{display: "grid", placeItems: "center"}}>
+      <div style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "50px", width: "fit-content", padding: "20px", display: "grid", placeItems:"center"}}>
+      <h6 style={{ textAlign: "center", marginTop: "10px"}}>{metadata.user ? `User: ${metadata.user.toUpperCase()}` : "NULL"}</h6>
+      <h5 style={{ textAlign: "center", marginTop: "10px" }}>${5 + (metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00 as any)} / month</h5>
+      <h2 style={{ textAlign: "center", marginTop: "10px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
+      <div style={{width: "70%", backgroundColor: "lightcyan", height: "24px"}}>
+        <div style={{width: `${(metadata.used / metadata.total*100)}%`, backgroundColor: "silver", height: "24px", opacity: "80%"}}>
+
+        </div>
+      </div>
+      </div>
+      </div>
+      <div style={{display: "grid", placeItems: "center"}}>
+      <h1 style={{ textAlign: "center", marginTop: "30px", paddingBottom: "13px", paddingTop: "8px", paddingRight: "20px", paddingLeft: "20px", borderRadius: "10px", backgroundColor: "lightblue", width: "fit-content" }}>{filePath.split("/").slice(filePath == "/" ? 1 : 0).map((e: any, i: any, a: any) => { return {url: previousPaths[i], name: e || "/"}}).map((e:any) => <>{e.name !== "/" ? <>&nbsp;&nbsp;&nbsp;<Arrow></Arrow>&nbsp;&nbsp;&nbsp;</> : ""}<span className='clickabledir' key={e.name} onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}${encodeURI(e.url)}`}>{e.name == "/" ? <Server></Server> : decodeURIComponent(e.name)}</span></>)}</h1>
+      </div>
+      
+      <div style={{display: "grid", placeItems: "center"}}>
+      <div style={{backgroundColor: "lightblue", borderRadius: "10px", marginTop: "25px", width: "fit-content", padding: "10px", display: "grid", placeItems:"center"}}>
+        <h6 style={{ textAlign: "center", marginTop: "10px" }}>{files.filter((e:any) => e.isDir).length} folders, {files.filter((e:any) => !e.isDir).length} files</h6>
+      </div>
+      </div>
+      <br></br>
       <br></br>
       {deleting.length ? <h3 style={{ textAlign: "center" }}>Deleting {deleting.length} objects: <Button style={{ backgroundColor: "red" }} onClick={async () => {
         let listOfEdits: any[] = []
@@ -95,6 +122,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             mySwal.fire({
                               background: "#white",
                               color: "#333333",
+                              titleText: `Path ${object.path}`,
                               confirmButtonColor: '#08c',
                               html: <>
                                   <h4 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h4>
@@ -155,8 +183,8 @@ export default function Home({ items, path, filePath, data, editable, previousPa
         }
         setLoadingState(false)
       }}>Delete</Button></h3> : editable ? <div style={{display: "grid", placeItems: "center"}}><InputGroup style={{width: "min(800px, 100%)"}}>
-      <InputGroup.Text id="lu">Upload FIles</InputGroup.Text>
-          <Form.Control required aria-describedby='lu' placeholder="Files..." id="files_to_upload" type="file" multiple></Form.Control>
+      <InputGroup.Text><Upload></Upload></InputGroup.Text>
+          <Form.Control required aria-describedby='lu' placeholder="Files..." id="files_to_upload" type="file" style={{width: "fit-content"}} multiple></Form.Control>
       </InputGroup>
       <br></br>
                 <Button type="button" onClick={() => {
@@ -235,11 +263,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                 let overwrite = await new Promise((resolve, reject) => {
                                   mySwal.fire({
                                     background: "#white",
-                                    titleText: "Enter API Key",
+                                    titleText: `Path ${filePath}${filePath == "/" ? "" : "/"}${file.name}`,
                                     color: "#333333",
                                     confirmButtonColor: '#08c',
                                     html: <>
-                                        <h4 style={{textAlign: "center"}}>File at {filePath}{filePath == "/" ? "" : "/"}{file.name} is currently being written by another user. Do you want to overwrite?</h4>
+                                        <h4 style={{textAlign: "center"}}>This path is currently being written by another user. Do you want to overwrite?</h4>
                                         <br></br>
                                         <div>
                                           <Button style={{float: "left"}} onClick={async () => {
@@ -283,11 +311,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                   let ow = await new Promise((resolve, reject) => {
                                     mySwal.fire({
                                       background: "#white",
-                                      titleText: "Enter API Key",
+                                      titleText: `Path ${filePath}${filePath == "/" ? "" : "/"}${file.name}`,
                                       color: "#333333",
                                       confirmButtonColor: '#08c',
                                       html: <>
-                                          <h4 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{file.name} already exists. Do you want to overwrite?</h4>
+                                          <h4 style={{textAlign: "center"}}>This path already exists. Do you want to overwrite?</h4>
                                           <br></br>
                                           <div>
                                             <Button style={{float: "left"}} onClick={async () => {
@@ -380,10 +408,10 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   }
                   setLoadingState(false)
                   files.value = ""
-                }}>Submit</Button>
+                }}>Upload Files</Button>
                 <br></br>
                 <InputGroup style={{width: "min(800px, 100%)"}}>
-      <InputGroup.Text id="lu">Create Folder</InputGroup.Text>
+      <InputGroup.Text id="lu"><FolderCreate></FolderCreate></InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="Folder name..." id="folder_name" type="text" multiple></Form.Control>
       </InputGroup>
       <br></br>
@@ -407,11 +435,11 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                         await new Promise((resolve, reject) => {
                           mySwal.fire({
                             background: "#white",
-                            titleText: "Enter API Key",
+                            titleText: `Path ${filePath}${filePath == "/" ? "" : "/"}${folder.value}`,
                             color: "#333333",
                             confirmButtonColor: '#08c',
                             html: <>
-                                <h3 style={{textAlign: "center"}}>Path {filePath}{filePath == "/" ? "" : "/"}{folder.value} already exists. Do you want to overwrite?</h3>
+                                <h3 style={{textAlign: "center"}}>This path already exists. Do you want to overwrite?</h3>
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
@@ -456,7 +484,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   setLoadingState(false)
                   setMessage(`Successfully added the folder "${folder.value}"!`)
                   folder.value = ""
-                }}>Submit</Button>
+                }}>Add Folder</Button>
       </div> : ""}
       <br></br>
       {edits.length ? <Table className="table">
@@ -471,14 +499,18 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                       changeEdits([...edits.filter(x => x.path != edit.path), {...edit, message: "Cancelling upload..."}]);
                       (edit.timeout as any).cmd = "STOPIT"
                     }
-                  }}>Clear All</Button></th>
+                  }}><XMark></XMark></Button></th>
                   <th>{edits.length}</th>
                 </tr>
         </thead> 
         <tbody>
             {edits.map(e => <tr key={e.path}>
               <td>{e.path}</td>
-              <td>{e.remaining} / {e.total} chunks</td>
+              <td><div style={{width: "150px", backgroundColor: "lightcyan", height: "24px"}}>
+        <div style={{width: `${(e.remaining / e.total*100)}%`, backgroundColor: "blue", height: "24px"}}>
+
+        </div>
+      </div></td>
               <td>{e.message}</td>
               <td><Button style={{backgroundColor: "red", display: `${e.cancelable != false ? "" : "none"}`}} onClick={() => {
                 if(e.errored) changeEdits(edits.filter(x => e.path != x.path))
@@ -486,7 +518,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   changeEdits([...edits.filter(x => x.path != e.path), {...e, message: "Cancelling upload..."}]);
                   (e.timeout as any).cmd = "STOPIT"
                 }
-              }}>Clear</Button></td>
+              }}><XMark></XMark></Button></td>
               <td></td>
             </tr>)}
         </tbody>
@@ -495,7 +527,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
       <h5 style={{textAlign: "center"}}>{message}</h5>
       <div style={{ marginTop: "100px", display: "grid", placeItems: "center" }}>
       <InputGroup style={{width: "min(800px, 100%)"}}>
-      <InputGroup.Text id="lu">Search</InputGroup.Text>
+      <InputGroup.Text id="lu"><Search></Search></InputGroup.Text>
           <Form.Control required aria-describedby='lu' placeholder="File Name..." type="text" onChange={(e) => {
             let {value} = e.target
             changeFiles([...originalFiles.filter((x:any) => x.name.toLowerCase().includes(value.toLowerCase()))])
@@ -522,9 +554,9 @@ export default function Home({ items, path, filePath, data, editable, previousPa
               <th>MIME</th>
               <th>Size</th>
               <th>Modified</th>
-              {editable ? <th>Edit</th> : ""}
-              <th><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20px"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V274.7l-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7V32zM64 352c-35.3 0-64 28.7-64 64v32c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V416c0-35.3-28.7-64-64-64H346.5l-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352H64zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg></th>
-              <th><svg id="reload" onClick={async () => {
+              {editable ? <th><Edit></Edit></th> : ""}
+              <th><Download></Download></th>
+              <th><Reload onClick={async () => {
                 setLoadingState(true)
                 let res = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/dir`+encodeURI(path))
                 let data = await res.json()
@@ -534,9 +566,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                 let data2 = await resp2.json()
                 changeMetaData(data2)
                 setLoadingState(false)
-              }} style={{ width: "20px", height: "20px" }} xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="100" height="100" viewBox="0 0 30 30">
-                <path d="M 15 3 C 12.031398 3 9.3028202 4.0834384 7.2070312 5.875 A 1.0001 1.0001 0 1 0 8.5058594 7.3945312 C 10.25407 5.9000929 12.516602 5 15 5 C 20.19656 5 24.450989 8.9379267 24.951172 14 L 22 14 L 26 20 L 30 14 L 26.949219 14 C 26.437925 7.8516588 21.277839 3 15 3 z M 4 10 L 0 16 L 3.0507812 16 C 3.562075 22.148341 8.7221607 27 15 27 C 17.968602 27 20.69718 25.916562 22.792969 24.125 A 1.0001 1.0001 0 1 0 21.494141 22.605469 C 19.74593 24.099907 17.483398 25 15 25 C 9.80344 25 5.5490109 21.062074 5.0488281 16 L 8 16 L 4 10 z"></path>
-              </svg></th>
+              }}></Reload></th>
             </tr>
           </thead>
           <tbody style={{ opacity: loadingState ? "50%" : "100%" }}>
@@ -549,26 +579,26 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   setDeleting(deleting.filter(i => i.path !== e.path))
                 }
               }}></input></td>
-              <td><a href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}><img height={32} width={32} src={e.type ? `https://github.com/redbooth/free-file-icons/blob/master/32px/${e.mime == "application/octet-stream" ? "_blank" : e.type}.png?raw=true` : "https://img.icons8.com/ios-filled/50/folder-invoices--v2.png"} />{e.type ? "" : " "}{e.name}</a></td>
+              <td><a href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}>{e.isDir ? <Folder></Folder> : <img height={32} width={32} src={`https://raw.githubusercontent.com/dmhendricks/file-icon-vectors/9b4b95928f7ff8d73bf45edf34862386e3c48ea5/dist/icons/vivid/${e.mime == "application/octet-stream" ? "bin" : e.type}.svg`} />}{e.name}</a></td>
               <td>{e.mime || "-"}</td>
               <td>{e.isDir ? "-" : e.size}</td>
               <td>{e.modified}</td>
-              {editable ? <td><Button onClick={async (x) => {
-                if(x.currentTarget.innerText == "Edit") {
+              {editable ? <td><span className={editing.find(x => x.path == e.path) ?"Done" : "Edit"} onClick={async (x) => {
+                if(x.currentTarget.className == "Edit") {
                   changeEditing([...editing, {path: e.path, value: e.name, newPath: e.path.split("/").slice(0, -1).join("/") || "/"}])
                 } else {
                   let newName = editing.find(i => i.path == e.path)
-                  if(newName.path == newName.newPath + (newName.newPath == "/" ? "" : "/") +  newName.value + `${e.isDir ? "" : `.${e.type}`}`) return changeEditing(editing.filter(i => i.path !== e.path));
+                  if(newName.path == newName.newPath + (newName.newPath == "/" ? "" : "/") +  newName.value + `${e.isDir || !e.type ? "" : `.${e.type}`}`) return changeEditing(editing.filter(i => i.path !== e.path));
                   if(!newName.value) return  setMessage("Please set a valid name to change the object to!!")
                   let {name} = files.find((i:any) => i.path == e.path)
                   setLoadingState(true)
-                  let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}`, {
+                  let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir || !e.type  ? "" : `.${e.type}`}`, {
                     method: "PATCH",
                     headers: {
                       'content-type': "application/json"
                     },
                     body: JSON.stringify({
-                      newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                      newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir || !e.type ? "" : `.${e.type}`}`
                     })
                   })
                   if(!res.ok) {
@@ -584,6 +614,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                           mySwal.fire({
                             background: "#white",
                             color: "#333333",
+                            titleText: `Path ${filePath}${filePath == "/" ? "" : "/"}${name}${e.isDir || !e.type ? "" : `.${e.type}`}`,
                             confirmButtonColor: '#08c',
                             html: <>
                                 <h3 style={{textAlign: "center"}}>Warning: the following not fully written files will be affected: <br></br><br></br><ul>{json.affectedFiles.map((e:any) => <li key={e}>{e}</li>)}</ul><br></br> Do you want to overwrite?</h3>
@@ -591,13 +622,13 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
-                                    let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwrite=true&overwriteGroup=true`, {
+                                    let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir || !e.type ? "" : `.${e.type}`}?overwrite=true&overwriteGroup=true`, {
                                       method: "PATCH",
                                       headers: {
                                         "Content-Type": "application/json"
                                       },
                                       body:JSON.stringify({
-                                        newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                                        newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir || !e.type ? "" : `.${e.type}`}`
                                       })
                                     })
                                     if (!res.ok) {
@@ -629,20 +660,21 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             mySwal.fire({
                               background: "#white",
                               color: "#333333",
+                              titleText: `Path ${filePath}${filePath == "/" ? "" : "/"}${name}${e.isDir || !e.type ? "" : `.${e.type}`}`,
                               confirmButtonColor: '#08c',
                               html: <>
-                                  <h4 style={{textAlign: "center"}}>Path {newName.newPath}{newName.newPath == "/" ? "" : "/"}{newName.value}{e.isDir ? "" : `.${e.type}`} already exists. Do you want to overwrite?</h4>
+                                  <h4 style={{textAlign: "center"}}>Path {newName.newPath}{newName.newPath == "/" ? "" : "/"}{newName.value}{e.isDir || !e.type ? "" : `.${e.type}`} already exists. Do you want to overwrite?</h4>
                                   <br></br>
                                   <div>
                                     <Button style={{float: "left"}} onClick={async () => {
                                       mySwal.clickConfirm()
-                                      let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir ? "" : `.${e.type}`}?overwriteGroup=true`, {
+                                      let res = await fetch(`/api/bucket/dir${filePath}${filePath == "/" ? "" : "/"}${encodeURI(name)}${e.isDir || !e.type ? "" : `.${e.type}`}?overwriteGroup=true`, {
                                         method: "PATCH",
                                         headers: {
                                           "Content-Type": "application/json"
                                         },
                                         body:JSON.stringify({
-                                          newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir ? "" : `.${e.type}`}`
+                                          newDir: `${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}${e.isDir || !e.type ? "" : `.${e.type}`}`
                                         })
                                       })
                                       if (!res.ok) {
@@ -677,8 +709,8 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                   setMessage(`Successfully edited object dir to "${newName.newPath}${newName.newPath == "/" ? "" : "/"}${newName.value}"!`)
                   changeEditing(editing.filter(i => i.path !== e.path))
                 }
-              }}>{editing.find(x => x.path == e.path) ? "Done" : "Edit"}</Button></td> : ""}
-              <td>{e.isDir ? "-" : <svg onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}/api/bucket/file${encodeURI(e.url)}?download=true`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="20px"><path d="M288 32c0-17.7-14.3-32-32-32s-32 14.3-32 32V274.7l-73.4-73.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l128 128c12.5 12.5 32.8 12.5 45.3 0l128-128c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L288 274.7V32zM64 352c-35.3 0-64 28.7-64 64v32c0 35.3 28.7 64 64 64H448c35.3 0 64-28.7 64-64V416c0-35.3-28.7-64-64-64H346.5l-45.3 45.3c-25 25-65.5 25-90.5 0L165.5 352H64zm368 56a24 24 0 1 1 0 48 24 24 0 1 1 0-48z"/></svg>}</td>
+              }}>{editing.find(x => x.path == e.path) ? <Checkmark></Checkmark> : <Edit></Edit>}</span></td> : ""}
+              <td>{e.isDir ? "-" : <Download onClick={() => window.location.href = `${process.env.NEXT_PUBLIC_URL}/api/bucket/file${encodeURI(e.url)}?download=true`}></Download>}</td>
               <td></td>
             </tr>
             <tr style={{height: "100px", display: `${editing.find(x => x.path == e.path) ? "" : "none"}`}}>

@@ -1,6 +1,5 @@
-import Link from 'next/link'
-import { useEffect, useState } from 'react'
-import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
+import { useState } from 'react'
+import { Button, Container, Table } from 'react-bootstrap'
 import {default as mongoose} from "mongoose"
 
 export default function Home({ data, metadata }: any) {

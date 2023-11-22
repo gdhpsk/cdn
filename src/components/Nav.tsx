@@ -37,12 +37,12 @@ function App({name, mainRoutes, active}: HeaderProps) {
                 {e}
               </Nav.Link>
             ))}  
-            <Auth></Auth>
             <Nav.Link
                 href="https://hpsk.me"
                 target="_blank"
                 style={{color: 'white'}}
               >My Site</Nav.Link>
+              <Auth></Auth>
           </Navbar.Collapse>
       </Container>
     </Navbar>
