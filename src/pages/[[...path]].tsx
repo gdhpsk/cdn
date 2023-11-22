@@ -218,13 +218,13 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                       try {
                         Object.assign(time, {key: ""})
                         let fileData: any = await read(file)
-                        obj.total = Math.ceil(fileData.length / 8000000)
+                        obj.total = Math.ceil(fileData.length / 4000000)
                         obj.timeout = time
                         listOfEdits.push(obj)
                         changeEdits([...edits.filter(x => x.cancelable == false), ...listOfEdits])
-                        for(let i = 0; i < fileData.length; i += 8000000) {
+                        for(let i = 0; i < fileData.length; i += 4000000) {
                           let {key, cmd} = time as any
-                          let array = Array.from(fileData.slice(i, i+8000000))
+                          let array = Array.from(fileData.slice(i, i+4000000))
                           let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
                             method: "POST",
                             headers: {
@@ -307,7 +307,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                 })
                                 Object.assign(time, {key: (overwrite as any).key as string})
                                 obj.remaining++
-                                obj.total = Math.ceil(fileData.length / 8000000)
+                                obj.total = Math.ceil(fileData.length / 4000000)
                                 await replaceObj(obj)
                                 continue;
                                 case "OverwriteErr":
@@ -360,7 +360,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                                   }) 
                                   Object.assign(time, {key: (ow as any).key as string})
                                   obj.remaining++
-                                  obj.total = Math.ceil(fileData.length / 8000000)
+                                  obj.total = Math.ceil(fileData.length / 4000000)
                                   await replaceObj(obj)
                                   continue;
                               default:
@@ -375,7 +375,7 @@ export default function Home({ items, path, filePath, data, editable, previousPa
                             Object.assign(time, {key: json.key})
                           }
                           obj.remaining++
-                          obj.total = Math.ceil(fileData.length / 8000000)
+                          obj.total = Math.ceil(fileData.length / 4000000)
                           await replaceObj(obj)
                         }
                         let res = await fetch(`/api/bucket/file${filePath}${filePath == "/" ? "" : "/"}${encodeURI(file.name)}`, {
