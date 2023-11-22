@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
-    largePageDataBytes: 128 * 10000,
+    largePageDataBytes: 128 * 1000000,
     serverActions: {
       bodySizeLimit: "200gb"
     }
