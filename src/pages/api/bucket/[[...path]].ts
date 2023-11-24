@@ -39,12 +39,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 $cond: {
                     'if': {
                         $and: [{ $eq: ['$username', user] }, {
-                            $not: [
-                                {
-                                    $in: [specifiedPath.path, "$writeAccessTo"]
-                                }
-                            ]
-                        }, {
                             $ne: [{
                                 $size: [{
                                     $filter: {
