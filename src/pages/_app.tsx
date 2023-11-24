@@ -12,7 +12,7 @@ export default function App({ Component, pageProps }: AppProps) {
   }
   return <>
   <Head>
-      <meta property="og:title" content={pageProps.items ? "Folder: " + pageProps.filePath.split("/").at(-1) || "/" : "Settings page"}/>
+      <meta property="og:title" content={pageProps.items ? "Folder: " + pageProps.filePath.at(-1) || "/" : "Settings page"}/>
     <meta property="og:description" content={pageProps.items ? `${pageProps.items.filter((e:any) => e.isDir).length} folders, ${pageProps.items.filter((e:any) => !e.isDir).length} files` : "Settings page for the hpskloud"}/>
       </Head>
   <Nav 

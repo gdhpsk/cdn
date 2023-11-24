@@ -4,7 +4,7 @@ import transactionsSchema from "./schemas/transactions";
 import mappingsSchema from "./schemas/mappings"
 
 mongoose.connect(process.env.MONGODB_URI as string, {
-    dbName: "cdn",
+    dbName: "hpskloud",
     readPreference: "primaryPreferred",
     authSource: "$external",
     authMechanism: "MONGODB-X509",
