@@ -228,7 +228,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                         for(let i = 0; i < fileData.length; i += 8000000) {
                           let {key, cmd} = time as any
                           let array = Array.from(fileData.slice(i, i+8000000))
-                          let res = await fetch(`/api/bucket/file${path}?name=${encodeURI(file.name)}`, {
+                          let res = await fetch(`/api/bucket/file${path == "/" ? "" : path}?name=${encodeURI(file.name)}`, {
                             method: "POST",
                             headers: {
                               "Content-Type": "application/json",
@@ -237,7 +237,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                             body: JSON.stringify(array)
                           })
                           if(cmd == "STOPIT") {
-                            let res = await fetch(`/api/bucket/file${path}?name=${encodeURI(file.name)}`, {
+                            let res = await fetch(`/api/bucket/file${path == "/" ? "" : path}?name=${encodeURI(file.name)}`, {
                               method: "POST",
                               headers: {
                                 "Content-Type": "text/plain",
@@ -279,7 +279,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                                         <div>
                                           <Button style={{float: "left"}} onClick={async () => {
                                             mySwal.clickConfirm()
-                                            let res = await fetch(`/api/bucket/file${path}?name=${encodeURI(file.name)}&overwrite=true`, {
+                                            let res = await fetch(`/api/bucket/file${path == "/" ? "" : path}?name=${encodeURI(file.name)}&overwrite=true`, {
                                               method: "POST",
                                               headers: {
                                                 "Content-Type": "application/json",
@@ -331,7 +331,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                                           <div>
                                             <Button style={{float: "left"}} onClick={async () => {
                                               mySwal.clickConfirm()
-                                              let res = await fetch(`/api/bucket/file${path}?name=${encodeURI(file.name)}&overwrite=true`, {
+                                              let res = await fetch(`/api/bucket/file${path == "/" ? "" : path}?name=${encodeURI(file.name)}&overwrite=true`, {
                                                 method: "POST",
                                                 headers: {
                                                   "Content-Type": "application/json",
@@ -381,7 +381,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                           obj.total = Math.ceil(fileData.length / 8000000)
                           await replaceObj(obj)
                         }
-                        let res = await fetch(`/api/bucket/file${path}?name=${encodeURI(file.name)}`, {
+                        let res = await fetch(`/api/bucket/file${path == "/" ? "" : path}?name=${encodeURI(file.name)}`, {
                           method: "POST",
                           headers: {
                             "Content-Type": "text/plain",
@@ -435,7 +435,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                   let folder: any = document.getElementById("folder_name")
                   if(!folder.value) return  setMessage("Please set a folder name to create!")
                   setLoadingState(true)
-                  let res = await fetch(`/api/bucket/dir${path}`, {
+                  let res = await fetch(`/api/bucket/dir${path == "/" ? "" : path}`, {
                     method: "POST",
                     headers: {
                       'content-type': "application/json"
@@ -465,7 +465,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                                 <div>
                                   <Button style={{float: "left"}} onClick={async () => {
                                     mySwal.clickConfirm()
-                                    let resp = await fetch(`/api/bucket/dir${path}?overwrite=true`, {
+                                    let resp = await fetch(`/api/bucket/dir${path == "/" ? "" : path}?overwrite=true`, {
                                       method: "POST",
                                       headers: {
                                         'content-type': "application/json"
