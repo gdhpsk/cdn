@@ -109,7 +109,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
               obj.timeout = item
               listOfEdits.push(obj)
               changeEdits([...edits.filter(x => x.cancelable != false), ...listOfEdits])
-              let res = await fetch(`/api/bucket/dir/${object.path.split("/").at(-1)}`, {
+              let res = await fetch(`/api/bucket/${object.dir ? "dir" : "file"}/${object.path.split("/").at(-1)}`, {
                 method: "DELETE"
               })
               if (!res.ok) {
@@ -133,7 +133,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
                                   <div>
                                     <Button style={{float: "left"}} onClick={async () => {
                                       mySwal.clickConfirm()
-                                      let res = await fetch(`/api/bucket/dir/${object.path.split("/").at(-1)}?overwrite=true`, {
+                                      let res = await fetch(`/api/bucket/${object.dir ? "dir" : "file"}/${object.path.split("/").at(-1)}?overwrite=true`, {
                                         method: "DELETE"
                                       })
                                       if (!res.ok) {

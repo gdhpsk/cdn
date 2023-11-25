@@ -170,8 +170,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 }
             case "POST":
                 try {
-                    if (!req.body.name) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name!" })
-                    let existing =   await mappings.findOne({virtualPath: {$all: specifiedPath.virtualPath}, name: req.body.name, directory: false}) || await mappings.findOne({virtualPath: {$all: specifiedPath.virtualPath}, name: req.body.name, directory: true})
+                    if (!req.body.name || !specifiedPath.directory) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name!" })
+                    let existing =  await mappings.findOne({virtualPath: specifiedPath.virtualPath, name: req.body.name, directory: false}) || await mappings.findOne({virtualPath: [...specifiedPath.virtualPath, req.body.name], directory: true})
                     if(!req.query.overwrite && existing?.directory == true) return res.status(400).send({ error: "400 BAD REQUEST", message: "That group already exists!", type: "OverwriteErr"})
                     if(existing?.directory == false) return res.status(400).json({ error: "400 BAD REQUEST", message: `That group is of type "${existing.directory ? "Folder" : "File"}" meaning it cannot be overwritten!`})
                     let url = crypto.generateKeySync("hmac", {length: 48}).export().toString("hex")
@@ -242,11 +242,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                             return [...(mapping?.virtualPath || []), mapping?.name]
                         }))})
                     }
-                    let exists = await mappings.findOne({virtualPath: {$all: existing.virtualPath}, name: req.body.newName, url: {$ne: "/" + req.query.path[0]}})
+                    let exists = specifiedPath.directory ? (await mappings.findOne({virtualPath: existing.virtualPath, name: req.body.newName, url: {$ne: "/" + req.query.path[0]}}) || await mappings.findOne({virtualPath: [...existing.virtualPath, req.body.newName], url: {$ne: "/" + req.query.path[0]}})) : (await mappings.findOne({virtualPath: [...existing.virtualPath, req.body.newName], url: {$ne: "/" + req.query.path[0]}}) || await mappings.findOne({virtualPath: existing.virtualPath, name: req.body.newName, url: {$ne: "/" + req.query.path[0]}}))
                         if(!req.query.overwriteGroup && exists !== null && exists?.directory == specifiedPath.directory) return res.status(403).send({error: "403 FORBIDDEN", message: "That new object directory already exists. Pass the overwriteGroup param to try and overwrite it.", type: "GroupOverwriteErr"})
                         if(exists !== null  && exists?.directory !== specifiedPath.directory) return res.status(403).send({error: "403 FORBIDDEN", message: `That new object directory is of type "${exists.directory ? "Folder" : "File"}", meaning you cannot overwrite it!`})
                     if(req.query.overwriteGroup) {
-                        let deletedObj = await mappings.findOneAndDelete({virtualPath: {$all: existing.virtualPath}, name: req.body.newName, url: {$ne: "/" + req.query.path[0]}})
+                        let deletedObj =  specifiedPath.directory ? await mappings.findOneAndDelete({virtualPath: [...existing.virtualPath, req.body.newName], url: {$ne: "/" + req.query.path[0]}}) : await mappings.findOneAndDelete({virtualPath: existing.virtualPath, name: req.body.newName, url: {$ne: "/" + req.query.path[0]}})
                         try {
                             await fs.rm(bucket as string + deletedObj.path, {recursive: true, force: true})
                         } catch(_) {}
@@ -288,7 +288,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 }
             case "DELETE":
                 try {
-                    if ((req.query.path as string[]).length == 0) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name to rename!" })
+                    if ((req.query.path as string[]).length == 0 || !specifiedPath.directory) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name to delete!" })
                     if(req.query.overwrite) {
                         await transactions.deleteMany({path: new RegExp("/" + req.query.path[0] + "($|/)")})
                     } else {
@@ -334,7 +334,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 }
             case "POST":
                 try {
-                    if (!req.query.name) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name in query params!" })
+                    if (!req.query.name || !specifiedPath.directory) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter an object name in query params!" })
                     if(req.body.length > 8000000) return res.json({error: "400 BAD REQUEST", message: "Max chunks allowed to be sent in are 16 MB!"})
                     if(!req.query.overwrite) {
                         let alreadyCreated =  await mappings.findOne({virtualPath: specifiedPath.virtualPath, name: req.query.name})
@@ -348,14 +348,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }
                         if(req.body == "END") {
                             await transactions.deleteOne({path: alreadyCreated.path})
-                            let hash =  await mappings.findOne({virtualPath: specifiedPath.virtualPath, name: req.query.name})
-                            return res.status(201).send({hash: hash.url.split("/")[1]})
+                            return res.status(201).send({hash: alreadyCreated.url.split("/")[1]})
                         }
                         if(req.body == "CANCEL") {
                             await transactions.deleteOne({path: alreadyCreated.path})
-                            let deleted = await mappings.findOneAndDelete({virtualPath: specifiedPath.virtualPath, name: req.query.name})
-                            if(!deleted) return res.status(400).send({ error: "400 BAD REQUEST", message: "That transaction does not exist!" })
-                            await fs.rm(bucket as string + deleted.path).catch((e) => {
+                            await mappings.deleteOne({path: alreadyCreated.path})
+                            await fs.rm(bucket as string + alreadyCreated.path).catch((e) => {
                                 console.log(e)
                                 return res.status(400).send({ error: "400 BAD REQUEST", message: "This group does not exists!" })
                             })
@@ -370,7 +368,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         return res.status(201).send(null)
                     }
                 }
-                let alreadyCreated = await mappings.findOne({virtualPath: {$all: specifiedPath.virtualPath}, name: req.query.name, directory: true}) || await mappings.findOne({virtualPath: {$all: specifiedPath.virtualPath}, name: req.query.name, directory: false})
+                let alreadyCreated = await mappings.findOne({virtualPath: [...specifiedPath.virtualPath, req.query.name], directory: true}) || await mappings.findOne({virtualPath: specifiedPath.virtualPath, name: req.query.name, directory: false})
                 if(!req.query.overwrite && alreadyCreated?.directory == false)  return res.status(400).send({ error: "400 BAD REQUEST", message: "File already exists. If you want to overwrite, add the overwrite query param.", type: "OverwriteErr" })
                 if(alreadyCreated?.directory == true)  return res.status(400).send({ error: "400 BAD REQUEST", message: "Folder with the same name already exists"})
                 
@@ -411,10 +409,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 }
             case "DELETE":
                 try {
-                    let existing = await mappings.exists({path: specifiedPath.path, directory: false})
-                    if(!existing) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
+                    if(specifiedPath.directory) return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
                     if(req.query.overwrite) {
-                        await transactions.deleteMany({path: specifiedPath.path})
+                        await transactions.deleteOne({path: specifiedPath.path})
                     } else {
                         let exists = await transactions.find({path: specifiedPath.path})
                         if(exists.length) return res.status(403).send({error: "403 FORBIDDEN", message: "The object name you are deleting currently has uploading objects associated with it. If you want to overwrite them, input it in the query params.", type: "OverwriteErr", affectedFiles: await Promise.all(exists.map(async e => {
@@ -423,7 +420,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         }))})
                     }
                     await fs.rm(bucket as string + specifiedPath.path)
-                    await mappings.deleteOne({path: specifiedPath})
+                    await mappings.deleteOne({path: specifiedPath.path})
                     return res.status(204).send(null)
                 } catch (_) {
                     return res.status(400).send({ error: "404 NOT FOUND", message: "Could not find the object being requested to delete." })
