@@ -318,10 +318,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     
                     if(stat.isDirectory()) throw new Error()
                     let str = "." + specifiedPath.name.split(".").at(-1)?.toLowerCase() || "bin"
+                    let c_size = 8000000
                     let start = parseInt(req.headers.range?.split("=")?.[1] || "0")
                     let end = stat.size
                     if(req.headers.range) {
-                        end = (1024 * 1024) + start > stat.size ? stat.size : (1024 * 1024) + start
+                        end = c_size + start > stat.size ? stat.size : c_size + start
                         res.setHeader("Content-Range", `bytes ${start}-${end-1}/${stat.size}`)
                     } else {
                         res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${req.query.name ? req.query.name + "." + specifiedPath.name.split(".").at(-1) : specifiedPath.name}"`)
@@ -331,7 +332,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         'accept-ranges': 'bytes',
                         'content-type': (types as any)[str] || "application/octet-stream"
                     })
-                    const file = createReadStream(bucket as string + specifiedPath.path, {highWaterMark: 1024 * 1024, start, end})
+                    const file = createReadStream(bucket as string + specifiedPath.path, {highWaterMark: c_size, start, end})
                     file.on("data", (chunk) => res.write(chunk))
                     file.on("end", () => res.end())
                     break;
