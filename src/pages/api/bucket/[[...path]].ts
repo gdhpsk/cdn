@@ -317,24 +317,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     let stat = await fs.lstat(bucket as string + specifiedPath.path)
                     
                     if(stat.isDirectory()) throw new Error()
+                    function iOS() {
+                        return [
+                          'iPad',
+                          'iPhone',
+                          'iPod'
+                        ].find(e => (req.headers["user-agent"] || "").includes(e)) || /^((?!chrome|android).)*safari/i.test(req.headers['user-agent'] || "");
+                      }
                     let str = "." + specifiedPath.name.split(".").at(-1)?.toLowerCase() || "bin"
                     let c_size = 1000000
-                    let start = parseInt(req.headers.range?.split("=")?.[1] || "0")
+                    let start = iOS() ? 0 : parseInt(req.headers.range?.split("=")?.[1] || "0")
                     let end = stat.size
-                    if(req.headers.range) {
-                        end = start ? (c_size + start > stat.size ? stat.size : c_size + start) : stat.size
+                    if(req.headers.range && !iOS()) {
+                        end = c_size + start > stat.size ? stat.size : c_size + start
                         res.setHeader("Content-Range", `bytes ${start}-${end-1}/${stat.size}`)
                     } else {
                         res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${req.query.name ? req.query.name + "." + specifiedPath.name.split(".").at(-1) : specifiedPath.name}"`)
                     }
-                    res.writeHead(req.headers.range ? 206 : 200, {
+                    res.writeHead(req.headers.range && !iOS() ? 206 : 200, {
                         'content-length': end - start,
                         'accept-ranges': 'bytes',
                         'content-type': (types as any)[str] || "application/octet-stream"
                     })
-                    const file = createReadStream(bucket as string + specifiedPath.path, {highWaterMark: c_size, start, end})
-                    file.on("data", (chunk) => res.write(chunk))
-                    file.on("end", () => res.end())
+                    createReadStream(bucket as string + specifiedPath.path, {highWaterMark: c_size, start, end}).pipe(res)
                     break;
                 } catch (_) {
                     console.log(_)
