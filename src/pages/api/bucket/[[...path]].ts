@@ -317,17 +317,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     let stat = await fs.lstat(bucket as string + specifiedPath.path)
                     
                     if(stat.isDirectory()) throw new Error()
-                    res.setHeader("accept-ranges", "bytes");
-                    let str = "." + specifiedPath.name.split(".").at(-1)?.toLowerCase() || "a"
-                    res.setHeader("Content-Type", (types as any)[str] || "application/octet-stream");
+                    let str = "." + specifiedPath.name.split(".").at(-1)?.toLowerCase() || "bin"
+                    let start = parseInt(req.headers.range?.split("=")?.[1] || "0")
+                    let end = stat.size
                     if(req.headers.range) {
-                        res.setHeader("Content-Range",`${req.headers.range}${stat.size-1}/${stat.size}`)
+                        end = (1024 * 1024) + start > stat.size ? stat.size : (1024 * 1024) + start
+                        res.setHeader("Content-Range", `bytes ${start}-${end-1}/${stat.size}`)
+                    } else {
+                        res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${req.query.name ? req.query.name + "." + specifiedPath.name.split(".").at(-1) : specifiedPath.name}"`)
                     }
-                    res.setHeader("content-disposition", `${req.query.download ? "attachment" : "inline"}; filename="${req.query.name ? req.query.name + "." + specifiedPath.name.split(".").at(-1) : specifiedPath.name}"`);
-                    res.writeHead(200, {
-                        'content-length': stat.size
+                    res.writeHead(req.headers.range ? 206 : 200, {
+                        'content-length': end - start,
+                        'accept-ranges': 'bytes',
+                        'content-type': (types as any)[str] || "application/octet-stream"
                     })
-                    const file = createReadStream(bucket as string + specifiedPath.path, {highWaterMark: 1024 * 1024})
+                    const file = createReadStream(bucket as string + specifiedPath.path, {highWaterMark: 1024 * 1024, start, end})
                     file.on("data", (chunk) => res.write(chunk))
                     file.on("end", () => res.end())
                     break;
