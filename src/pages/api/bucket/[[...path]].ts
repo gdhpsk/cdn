@@ -318,7 +318,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     
                     if(stat.isDirectory()) throw new Error()
                     let str = "." + specifiedPath.name.split(".").at(-1)?.toLowerCase() || "bin"
-                    let c_size = 8000000
+                    let c_size = 2000000
                     let start = parseInt(req.headers.range?.split("=")?.[1] || "0")
                     let end = stat.size
                     if(req.headers.range) {
