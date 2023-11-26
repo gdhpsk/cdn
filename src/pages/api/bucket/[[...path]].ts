@@ -322,7 +322,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     let start = parseInt(req.headers.range?.split("=")?.[1] || "0")
                     let end = stat.size
                     if(req.headers.range) {
-                        end = c_size + start > stat.size ? stat.size : c_size + start
+                        end = start ? (c_size + start > stat.size ? stat.size : c_size + start) : stat.size
                         res.setHeader("Content-Range", `bytes ${start}-${end-1}/${stat.size}`)
                     } else {
                         res.setHeader("Content-Disposition", `${req.query.download ? "attachment" : "inline"}; filename="${req.query.name ? req.query.name + "." + specifiedPath.name.split(".").at(-1) : specifiedPath.name}"`)
