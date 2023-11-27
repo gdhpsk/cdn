@@ -318,6 +318,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                     
                     if(stat.isDirectory()) throw new Error()
                     function iOS() {
+                        if(req.query.partialContent == "false") return true;
+                        if(req.query.partialContent == "true") return false;
                         return [
                           'iPad',
                           'iPhone',
