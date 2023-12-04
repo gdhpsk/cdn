@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Button, Container, Form, InputGroup, Table } from 'react-bootstrap'
+import { Button, Container, Form, InputGroup, ProgressBar, Table } from 'react-bootstrap'
 import Arrow from "@/components/icons/Arrow"
 import Download from "@/components/icons/Download"
 import Reload from "@/components/icons/Reload"
@@ -69,11 +69,9 @@ export default function Home({ items, path, filePath, file_path, data, editable,
       <h6 style={{ textAlign: "center", marginTop: "10px"}}>{metadata.user ? `User: ${metadata.user.toUpperCase()}` : "User: NULL"}</h6>
       <h5 style={{ textAlign: "center", marginTop: "10px" }}>${5 + (metadata.used > metadata.total ? ((metadata.used - metadata.total)*0.02).toFixed(2) : 0.00 as any)} / month</h5>
       <h2 style={{ textAlign: "center", marginTop: "10px" }}>{metadata.used} GB / {metadata.total} GB used ({(metadata.used / metadata.total*100).toFixed(5)}%)</h2>
-      <div style={{width: "70%", backgroundColor: "lightcyan", height: "24px", borderRadius: "24px"}}>
-        <div style={{width: `${(metadata.used / metadata.total*100)}%`, backgroundColor: "silver", height: "24px", opacity: "80%", borderRadius: "24px"}}>
-
-        </div>
-      </div>
+      <ProgressBar variant={"info"} style={{height: "30px", borderRadius: "40px", width: "100%", backgroundColor: "lightcyan"}}>
+          <ProgressBar now={metadata.used / metadata.total*100} variant={"info"} style={{height: "30px", borderRadius: "40px"}}/>
+      </ProgressBar>
       </div>
       </div>
       <div style={{display: "grid", placeItems: "center"}}>
@@ -534,11 +532,10 @@ export default function Home({ items, path, filePath, file_path, data, editable,
         <tbody>
             {edits.map(e => <tr key={e.path}>
               <td>{e.path}</td>
-              <td><><div style={{width: "150px", backgroundColor: "lightskyblue", height: "24px", borderRadius: "24px"}}>
-        <div style={{width: `${(e.remaining / e.total*100)}%`, backgroundColor: "blue", height: "24px", borderRadius: "24px"}}>
-
-        </div>
-      </div>
+              <td><>
+                <ProgressBar variant={"info"} style={{height: "24px", borderRadius: "24px", width: "150px"}}>
+                    <ProgressBar now={e.remaining / e.total*100} animated variant={"info"} style={{height: "30px", borderRadius: "40px"}} />
+                </ProgressBar>
       <span style={{textAlign: "center", width: "150px", display: "inline-block"}}>{(e.remaining / e.total*100).toFixed(2)}%</span>
       </></td>
               <td>{e.message}</td>
