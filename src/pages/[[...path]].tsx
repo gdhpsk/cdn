@@ -610,7 +610,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
               }}></input></td>
               <td><a className="group-name" href={`${process.env.NEXT_PUBLIC_URL}${e.isDir ? "" : "/api/bucket/file"}${encodeURI(e.url)}`}>{e.isDir ? <Folder></Folder> : <img height={32} width={32} src={`https://raw.githubusercontent.com/dmhendricks/file-icon-vectors/9b4b95928f7ff8d73bf45edf34862386e3c48ea5/dist/icons/vivid/${e.mime == "application/octet-stream" ? "bin" : e.type}.svg`} />}{e.name}</a></td>
               <td>{e.mime || "-"}</td>
-              <td>{e.isDir ? "-" : e.size}</td>
+              <td>{e.size}</td>
               <td>{e.modified}</td>
               <td>{e.url.split("/")[1]}</td>
               {editable ? <td><span className={editing.find(x => x.path == e.path) ?"Done" : "Edit"} onClick={async (x) => {
