@@ -412,6 +412,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                         Key: specifiedPath.path.replace("/", "")
                     }))
                     if (command.$metadata.httpStatusCode != 200) throw new Error()
+                    if(req.query.onlyMetadata == "true") {
+                        return res.status(200).json(command)
+                    }
                     function iOS() {
                         if (req.query.partialContent == "false") return true;
                         if (req.query.partialContent == "true") return false;
