@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.511.0",
     "@enviro/metadata": "^1.5.1",
     "bcrypt": "^5.1.1",
     "dayjs": "^1.11.10",
