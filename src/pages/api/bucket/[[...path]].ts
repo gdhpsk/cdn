@@ -315,8 +315,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse,
                 try {
                     if ((req.query.path as string[]).length != 1) return res.status(400).send({ error: "400 BAD REQUEST", message: "Please enter ab object hash to view!" })
                     let stat = await fs.lstat(bucket as string + specifiedPath.path)
-                    
                     if(stat.isDirectory()) throw new Error()
+                    if(req.query.onlyMetadata == "true") {
+                        return res.status(200).json(stat)
+                    }
                     function iOS() {
                         if(req.query.partialContent == "false") return true;
                         if(req.query.partialContent == "true") return false;
