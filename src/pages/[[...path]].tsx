@@ -38,6 +38,7 @@ export default function Home({ items, path, filePath, file_path, data, editable,
    (async () => {
     if(edits.length && editsDone)  setEditsDone(false)
     if(!edits.length && !editsDone) {
+      setEditsDone(true)
       setMessage("Tasks completed successfully.")
       setTimeout(() => {
         setMessage("")
@@ -50,7 +51,6 @@ export default function Home({ items, path, filePath, file_path, data, editable,
       let resp2 = await fetch(`${process.env.NEXT_PUBLIC_URL}/api/bucket/ping`)
       let data2 = await resp2.json()
       changeMetaData(data2)
-      setEditsDone(true)
     }
    })()
   })
